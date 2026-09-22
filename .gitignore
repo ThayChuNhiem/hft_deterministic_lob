@@ -1,0 +1,46 @@
+# Vivado & Xilinx Build Artifacts
+*.jou
+*.log
+*.str
+*.wdb
+*.vcd
+.Xil/
+hd_visual/
+*.pb
+*.dcp
+*.rpt
+*.bit
+*.bin
+*.hwh
+*.xsa
+
+# C++ Build Artifacts
+*.o
+*.obj
+*.so
+*.dll
+*.dylib
+*.a
+*.exe
+build/
+bin/
+out/
+
+# Simulation Artifacts
+xsim.dir/
+work/
+transcript
+*.vstf
+cov_work/
+
+# SymbiYosys / Formal Artifacts
+*_out/
+*.sby.lock
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~
