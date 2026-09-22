@@ -27,7 +27,7 @@ Phase 4:                                             [===Timing & Báo cáo===]
 - **Mục tiêu:** Xây dựng phần mềm mô phỏng LOB thuần C++ nhưng có kiến trúc dữ liệu phản chiếu 1:1 với phần cứng (không dùng `std::map` hay `new/malloc`).
 - **Nội dung:** Sử dụng mảng tĩnh `PriceLevel levels[1024]`, mảng tĩnh `Node node_pool[4096]`, và mảng con trỏ rảnh `free_list[4096]`.
 - **Bẫy cần tránh:** Không dùng thư viện động vì phần mềm tự động dọn rác bộ nhớ còn phần cứng thì không.
-- **DoD:** Tạo `test_golden_model.cpp`, chạy qua $10.000$ lệnh mẫu, xác nhận so khớp đúng $100\%$.
+- **DoD:** Tạo `test_golden_model.cpp`, chạy qua 10.000 lệnh mẫu, xác nhận so khớp đúng 100%.
 
 ### Bước 1.3: Xây dựng Cầu nối DPI-C (Direct Programming Interface)
 - **Mục tiêu:** Cho phép Testbench SystemVerilog gọi trực tiếp C++ Golden Model.
@@ -39,20 +39,20 @@ Phase 4:                                             [===Timing & Báo cáo===]
 ## GIAI ĐOẠN 2: THIẾT KẾ VI KIẾN TRÚC RTL TỪNG MODULE (TUẦN 4 – 8)
 
 ### Bước 2.1: Module Quản lý Bộ nhớ Cấp phát Con trỏ (`free_list_allocator.sv`)
-- **Mục tiêu:** Cấp phát một chỉ số node trống ($0 \dots 4095$) trong đúng 1 chu kỳ clock.
-- **Nội dung:** Xây dựng hàng đợi vòng (Circular FIFO) trong BRAM Simple Dual-Port $4096 \times 12\text{-bit}$.
+- **Mục tiêu:** Cấp phát một chỉ số node trống (0 ... 4095) trong đúng 1 chu kỳ clock.
+- **Nội dung:** Xây dựng hàng đợi vòng (Circular FIFO) trong BRAM Simple Dual-Port 4096 × 12-bit.
 - **Bẫy cần tránh:** Tránh xung đột cổng khi cùng một chu kỳ vừa có yêu cầu cấp phát (`alloc`) vừa có yêu cầu thu hồi (`dealloc`).
 - **DoD:** Testbench cấp phát liên tục 4096 node, thử cấp phát khi đầy (báo cờ `empty=1`), sau đó giải phóng toàn bộ và kiểm tra số dư.
 
 ### Bước 2.2: Module Cây Tìm Mức Giá Tốt Nhất (`hierarchical_bitmap_ffs.sv`)
 - **Mục tiêu:** Tìm Best Bid (Max Price) và Best Ask (Min Price) trong **1 chu kỳ clock xác định**.
-- **Nội dung:** Cây Find-First-Set 2 tầng (32 cụm $\times$ 32 bit). Tầng 0 dùng 32 cổng OR rút gọn; Tầng 1 mã hóa ưu tiên 32-bit; Tầng 2 MUX chọn cụm.
+- **Nội dung:** Cây Find-First-Set 2 tầng (32 cụm × 32 bit). Tầng 0 dùng 32 cổng OR rút gọn; Tầng 1 mã hóa ưu tiên 32-bit; Tầng 2 MUX chọn cụm.
 - **Bẫy cần tránh:** Không dùng vòng lặp `for` tuần tự dài dòng làm tăng chiều dài đường truyền logic.
 - **DoD:** Testbench bật các bit ngẫu nhiên, xác nhận ngõ ra Best Price luôn cập nhật chính xác ngay ở chu kỳ sau.
 
 ### Bước 2.3: Module Tra cứu và Hủy lệnh Tức thời (`order_id_tracker.sv`)
 - **Mục tiêu:** Khi nhận lệnh Hủy mang `order_id`, trả về địa chỉ node tương ứng trong đúng 1 chu kỳ clock.
-- **Nội dung:** BRAM Simple Dual-Port $4096 \times 12\text{-bit}$ ánh xạ `RAM[order_id] = node_ptr`.
+- **Nội dung:** BRAM Simple Dual-Port 4096 × 12-bit ánh xạ `RAM[order_id] = node_ptr`.
 - **Bẫy cần tránh:** Lỗi Read-After-Write (RAW) khi lệnh Cancel đến ngay sau lệnh Insert có cùng ID. Cần bổ sung thanh ghi Bypass Forwarding.
 - **DoD:** Testbench ghi 1000 ID ngẫu nhiên, đọc lại và xác nhận độ trễ đọc đúng 1 chu kỳ clock.
 
@@ -77,7 +77,7 @@ Phase 4:                                             [===Timing & Báo cáo===]
 ### Bước 3.1: Xây dựng Môi trường Kiểm chứng Class-Based ("UVM-lite")
 - **Mục tiêu:** Tự động hóa kiểm thử bằng phương pháp hướng đối tượng trong SystemVerilog.
 - **Nội dung:** Xây dựng `generator.sv` (sinh ngẫu nhiên có ràng buộc), `driver.sv`, `monitor.sv`, `scoreboard.sv` (so sánh bit-exact với C++).
-- **DoD:** Chạy **$1.000.000$ transactions** ngẫu nhiên mà Scoreboard không phát hiện bất kỳ lỗi lệch bit nào (Zero Error).
+- **DoD:** Chạy **1.000.000 transactions** ngẫu nhiên mà Scoreboard không phát hiện bất kỳ lỗi lệch bit nào (Zero Error).
 
 ### Bước 3.2: Kiểm thử các Kịch bản Đối kháng Biên (Adversarial Stress Test)
 - **Nội dung kịch bản:**
@@ -96,8 +96,8 @@ Phase 4:                                             [===Timing & Báo cáo===]
 
 ### Bước 3.4: Đóng Độ bao phủ Kiểm chứng (Coverage Closure)
 - **Mục tiêu:** Đo lường mức độ bao phủ của bộ kiểm thử trên Vivado Simulator.
-- **Chỉ tiêu:** Line Coverage $> 95\%$, Branch Coverage $> 95\%$, FSM State Coverage $= 100\%$, Functional Cross Coverage $\ge 90\%$.
-- **DoD:** Báo cáo Coverage Report xuất ra từ Vivado đạt tổng thể $\ge 95\%$.
+- **Chỉ tiêu:** Line Coverage > 95%, Branch Coverage > 95%, FSM State Coverage = 100%, Functional Cross Coverage ≥ 90%.
+- **DoD:** Báo cáo Coverage Report xuất ra từ Vivado đạt tổng thể ≥ 95%.
 
 ---
 
@@ -105,11 +105,11 @@ Phase 4:                                             [===Timing & Báo cáo===]
 
 ### Bước 4.1: Tổng hợp Logic & Place & Route (Vivado Implementation)
 - **Target Part:** Chip AMD Xilinx Zynq UltraScale+ `xczu3eg-sbva484-1-e` (Kria KV260).
-- **Ràng buộc thời gian:** Khai báo xung clock $200\text{ MHz}$ (chu kỳ $5.0\text{ ns}$) trong file `constraints.xdc`.
-- **DoD:** Chạy thành công toàn bộ flow Non-project TCL: `synth_design` $\rightarrow$ `opt_design` $\rightarrow$ `place_design` $\rightarrow$ `route_design`.
+- **Ràng buộc thời gian:** Khai báo xung clock 200 MHz (chu kỳ 5.0 ns) trong file `constraints.xdc`.
+- **DoD:** Chạy thành công toàn bộ flow Non-project TCL: `synth_design` → `opt_design` → `place_design` → `route_design`.
 
 ### Bước 4.2: Đóng Timing & Phân tích Độ trễ Tới hạn (STA)
-- **Mục tiêu:** Đạt **Worst Negative Slack (WNS) $\ge 0.00\text{ ns}$** và **Total Negative Slack (TNS) = 0.00 ns**.
+- **Mục tiêu:** Đạt **Worst Negative Slack (WNS) ≥ 0.00 ns** và **Total Negative Slack (TNS) = 0.00 ns**.
 - **Xử lý nếu vi phạm:** Phân tích đường trễ lớn nhất trong `timing_summary.rpt`, chèn thêm thanh ghi pipeline hợp lý.
 - **DoD:** Báo cáo Timing Summary báo chữ xanh: `All user specified timing constraints are met`.
 

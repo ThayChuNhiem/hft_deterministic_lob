@@ -1,7 +1,7 @@
 # Deterministic Hardware Accelerator for High-Frequency Trading (HFT) Limit Order Book
 
 > **Đề tài:** Nghiên cứu & Thiết kế Vi kiến trúc Bộ tăng tốc Khớp lệnh Sổ lệnh Giới hạn (Limit Order Book) đạt Độ trễ Xác định (Deterministic / Zero-Jitter) trên nền tảng FPGA/SoC.  
-> **Lộ trình:** Đồ án 1 $\rightarrow$ Đồ án 2 $\rightarrow$ Đồ án Tốt nghiệp (ĐATN) | Định hướng công bố quốc tế Q1 (IEEE TVLSI / TCAS-I / ACM TRETS).  
+> **Lộ trình:** Đồ án 1 → Đồ án 2 → Đồ án Tốt nghiệp (ĐATN) | Định hướng công bố quốc tế Q1 (IEEE TVLSI / TCAS-I / ACM TRETS).  
 > **Chuyên ngành:** Điện tử Viễn thông — Thiết kế Vi mạch Số (Digital ASIC/FPGA) — Trường Đại học Bách khoa Hà Nội (HUST).  
 > **Phiên bản Vi kiến trúc:** v2 (Direct Price-Indexed Array + Hierarchical Bitmap FFS).
 
@@ -12,8 +12,8 @@
 Trong thị trường tài chính tần số cao (HFT), sự cạnh tranh về tốc độ diễn ra ở cấp độ **nanosecond**. Các hệ thống khớp lệnh chạy bằng phần mềm truyền thống (C++ trên CPU x86) thường xuyên gặp phải hiện tượng **trễ đột biến (Latency Spikes / Jitter)** khi thị trường dồn dập (burst traffic), do hạn chế vật lý của cache misses, ngắt hệ điều hành (OS interrupts) và phân mảnh bộ nhớ.
 
 Dự án này tập trung nghiên cứu và hiện thực hóa một **Lõi Khớp lệnh Phần cứng Chuyên dụng (Custom Silicon Matching Engine)** trên FPGA với các cam kết:
-- **Deterministic by Construction:** Độ trễ cố định ở cấp độ chu kỳ clock (khoảng $20 - 25\text{ ns}$ tại $200\text{ MHz}$), triệt tiêu hoàn toàn hiện tượng giật lag nội tại.
-- **$\mathcal{O}(1)$ Operations:** Mọi thao tác Thêm lệnh (Insert), Hủy lệnh (Cancel), So khớp (Match) và Tìm mức giá tốt nhất (Top-of-Book) đều được thực hiện trong số chu kỳ clock cố định, không phụ thuộc vào độ sâu hay trạng thái của sổ lệnh.
+- **Deterministic by Construction:** Độ trễ cố định ở cấp độ chu kỳ clock (khoảng 20 – 25 ns tại 200 MHz), triệt tiêu hoàn toàn hiện tượng giật lag nội tại.
+- **O(1) Operations:** Mọi thao tác Thêm lệnh (Insert), Hủy lệnh (Cancel), So khớp (Match) và Tìm mức giá tốt nhất (Top-of-Book) đều được thực hiện trong số chu kỳ clock cố định, không phụ thuộc vào độ sâu hay trạng thái của sổ lệnh.
 - **Kế thừa 100% qua 3 giai đoạn:** Đóng băng giao diện giao tiếp chuẩn (`order_txn_t`) ngay từ ngày đầu, bảo đảm toàn bộ mã nguồn của Đồ án 1 được tái sử dụng nguyên vẹn ở Đồ án 2 và ĐATN.
 
 ---
@@ -31,9 +31,9 @@ Dự án này tập trung nghiên cứu và hiện thực hóa một **Lõi Kh�
  └────────────────────────┘    └───────────────────────────┘    └───────────────────────────────┘
 ```
 
-1. **Đồ án 1 (RTL Core & Verification Engine):** Thiết kế lõi LOB 1 symbol tuần tự ($K=1$), cấu trúc dữ liệu Direct-Indexed + Bitmap FFS $\mathcal{O}(1)$, hệ thống kiểm chứng bit-exact với C++ qua DPI-C và kiểm chứng bất biến an toàn bằng SVA / SymbiYosys BMC.
+1. **Đồ án 1 (RTL Core & Verification Engine):** Thiết kế lõi LOB 1 symbol tuần tự (K=1), cấu trúc dữ liệu Direct-Indexed + Bitmap FFS O(1), hệ thống kiểm chứng bit-exact với C++ qua DPI-C và kiểm chứng bất biến an toàn bằng SVA / SymbiYosys BMC.
 2. **Đồ án 2 (SoC Subsystem & Financial Protocol Parser):** Đóng gói AXI4-Lite/Stream, tích hợp AXI DMA, xây dựng bộ giải mã giao thức NASDAQ ITCH/OUCH ở tốc độ dây và bộ phát lưu lượng phần cứng (Hardware Traffic Generator - HW-TG) trong PL.
-3. **Đồ án Tốt nghiệp (Parallel Scaling, Timing Closure & Q1 Manuscript):** Mở rộng song song $K=2, 4$ lệnh/chu kỳ kèm bộ giải quyết xung đột dữ liệu (Intra-bundle Conflict Arbitrator), mở rộng đa symbol, tối ưu hóa vật lý đóng timing $\ge 200 - 250\text{ MHz}$ trên chip Zynq UltraScale+, đo kiểm thực nghiệm và hoàn thiện bản thảo bài báo khoa học.
+3. **Đồ án Tốt nghiệp (Parallel Scaling, Timing Closure & Q1 Manuscript):** Mở rộng song song K=2, 4 lệnh/chu kỳ kèm bộ giải quyết xung đột dữ liệu (Intra-bundle Conflict Arbitrator), mở rộng đa symbol, tối ưu hóa vật lý đóng timing ≥ 200 - 250 MHz trên chip Zynq UltraScale+, đo kiểm thực nghiệm và hoàn thiện bản thảo bài báo khoa học.
 
 ---
 
@@ -70,10 +70,10 @@ hft_deterministic_lob/
 
 - **Dung lượng sổ lệnh:** Tối đa **4.096 lệnh nằm chờ đồng thời** (Resting Orders in BRAM Node Pool).
 - **Không gian mức giá:** **1.024 mức giá** (Quản lý qua 2-Level Hierarchical Bitmap FFS).
-- **Khối lượng tối đa mỗi lệnh:** $2^{32}-1 \approx 4.29$ tỷ cổ phiếu / hợp đồng.
-- **Tần số xung nhịp mục tiêu:** $200\text{ MHz}$ (Chu kỳ clock $5.0\text{ ns}$) trên AMD Xilinx Zynq UltraScale+ (`xczu3eg` / `xczu5ev`).
+- **Khối lượng tối đa mỗi lệnh:** 2^32 - 1 ≈ 4.29 tỷ cổ phiếu / hợp đồng.
+- **Tần số xung nhịp mục tiêu:** **200 MHz** (Chu kỳ clock 5.0 ns) trên AMD Xilinx Zynq UltraScale+ (`xczu3eg` / `xczu5ev`).
 - **Độ trễ xử lý thuần túy (Hardware Latency):**
-  - Lệnh Chèn vào sổ (Insert): **Đúng 5 chu kỳ clock ($25\text{ ns}$)**.
-  - Lệnh Hủy (Cancel): **Đúng 4 chu kỳ clock ($20\text{ ns}$)**.
-  - Lệnh Khớp (Match): **4 – 5 chu kỳ clock ($20 - 25\text{ ns}$)**.
-- **Thông lượng tối đa:** $\approx \mathbf{40.000.000\ \text{lệnh/giây}}$ (40 Mops).
+  - Lệnh Chèn vào sổ (Insert): **Đúng 5 chu kỳ clock (25 ns)**.
+  - Lệnh Hủy (Cancel): **Đúng 4 chu kỳ clock (20 ns)**.
+  - Lệnh Khớp (Match): **4 – 5 chu kỳ clock (20 – 25 ns)**.
+- **Thông lượng tối đa:** **≈ 40.000.000 lệnh/giây** (40 Mops).
