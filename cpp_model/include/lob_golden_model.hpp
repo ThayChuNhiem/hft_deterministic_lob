@@ -10,14 +10,15 @@
 
 #include <cstdint>
 #include <cstring>
+#include <algorithm>
 
 namespace hft {
 
     // Kích thước cấu hình chuẩn theo hft_pkg.sv
     constexpr uint32_t MAX_LEVELS      = 1024;
     constexpr uint32_t NODE_POOL_SIZE  = 4096;
-    constexpr uint16_t NULL_PTR        = 0x0FFF;
-    constexpr uint32_t BUS_DATA_WIDTH  = 256; // 32 bytes
+    constexpr uint16_t NULL_PTR        = 0xFFFF; // 16-bit sentinel cho NULL
+    constexpr uint32_t BUS_DATA_WIDTH  = 256;    // 32 bytes
 
     // Định dạng Hành động (Byte-aligned)
     enum Action : uint8_t {
@@ -48,8 +49,8 @@ namespace hft {
         uint16_t reserved_0;  // [207:192] 2 bytes
         uint32_t price;       // [191:160] 4 bytes
         uint32_t qty;         // [159:128] 4 bytes
-        uint8_t  side;        // [127:120] 1 byte
-        uint8_t  action;      // [119:112] 1 byte
+        uint8_t  side;        // [127:120] 1 byte  (0=Buy, 1=Sell)
+        uint8_t  action;      // [119:112] 1 byte  (0=New, 1=Cancel)
         uint16_t reserved_1;  // [111:96]  2 bytes
         uint64_t timestamp;   // [95:32]   8 bytes
         uint32_t user_tag;    // [31:0]    4 bytes
@@ -75,13 +76,15 @@ namespace hft {
         uint32_t qty;        // 4 bytes
         uint16_t next_ptr;   // 2 bytes
         uint16_t prev_ptr;   // 2 bytes
-        uint32_t ts_low;     // 4 bytes (32-bit lower timestamp counter)
+        uint16_t price;      // 2 bytes (0 .. 1023)
+        uint8_t  side;       // 1 byte  (0=Buy, 1=Sell)
+        uint8_t  pad;        // 1 byte
     };
     static_assert(sizeof(LobNode) == 16, "LobNode must be exactly 16 bytes (128 bits)!");
 
     // Descriptor mức giá (Đúng 8 bytes = 64 bits)
     struct PriceDescriptor {
-        uint16_t head_ptr;   // 2 bytes (NULL_PTR = 0x0FFF nếu rỗng)
+        uint16_t head_ptr;   // 2 bytes (NULL_PTR = 0xFFFF nếu rỗng)
         uint16_t tail_ptr;   // 2 bytes
         uint32_t total_qty;  // 4 bytes (total_qty == 0 nghĩa là mức giá rỗng)
     };
@@ -98,31 +101,39 @@ namespace hft {
         ExecReport process_order(const OrderTxn& txn);
 
         // Helper tra cứu trạng thái
-        uint32_t get_best_bid() const;
-        uint32_t get_best_ask() const;
+        int32_t  get_best_bid() const;
+        int32_t  get_best_ask() const;
         uint32_t get_free_count() const { return m_free_count; }
+        uint32_t get_level_total_qty(uint8_t side, uint32_t price) const;
+        bool     is_level_active(uint8_t side, uint32_t price) const;
 
     private:
         PriceDescriptor m_bid_levels[MAX_LEVELS];
         PriceDescriptor m_ask_levels[MAX_LEVELS];
         LobNode         m_node_pool[NODE_POOL_SIZE];
         uint16_t        m_free_list[NODE_POOL_SIZE];
-        uint16_t        m_order_id_map[NODE_POOL_SIZE];
+        uint16_t        m_order_id_map[NODE_POOL_SIZE]; // Direct tracker for local dense IDs
 
-        uint32_t m_bid_bitmap[32];
+        uint32_t m_bid_bitmap[32]; // 32 * 32 = 1024 bits
         uint32_t m_ask_bitmap[32];
 
         uint32_t m_head_free_ptr;
         uint32_t m_tail_free_ptr;
         uint32_t m_free_count;
 
+        // Quản lý bộ nhớ node
         uint16_t allocate_node();
         void     deallocate_node(uint16_t node_ptr);
 
-        void set_bitmap_bit(uint32_t* bitmap, uint32_t price);
-        void clear_bitmap_bit(uint32_t* bitmap, uint32_t price);
-        int  find_highest_bit(const uint32_t* bitmap) const;
-        int  find_lowest_bit(const uint32_t* bitmap) const;
+        // Quản lý Bitmap
+        void    set_bitmap_bit(uint32_t* bitmap, uint32_t price);
+        void    clear_bitmap_bit(uint32_t* bitmap, uint32_t price);
+        int32_t find_highest_bit(const uint32_t* bitmap) const;
+        int32_t find_lowest_bit(const uint32_t* bitmap) const;
+
+        // Quản lý hàng đợi mức giá
+        void enqueue_order(uint8_t side, uint32_t price, uint16_t node_ptr);
+        void unlink_order(uint8_t side, uint32_t price, uint16_t node_ptr);
     };
 
 } // namespace hft

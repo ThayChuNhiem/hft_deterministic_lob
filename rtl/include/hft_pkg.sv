@@ -37,7 +37,7 @@ package hft_pkg;
     // =========================================================================
     localparam int NODE_POOL_SIZE   = 4096; // Tối đa 4096 lệnh nằm chờ đồng thời
     localparam int NODE_PTR_W       = $clog2(NODE_POOL_SIZE); // 12-bit
-    localparam logic [NODE_PTR_W-1:0] NULL_PTR = '1; // 12'hFFF đại diện cho NULL
+    localparam logic [15:0] NULL_PTR = 16'hFFFF; // 16-bit sentinel cho NULL
 
     // Hỗ trợ mở rộng song song (ĐATN)
     localparam int N_FREELIST_BANKS = 4; // Multi-bank interleaved cho K-way
@@ -103,11 +103,11 @@ package hft_pkg;
     typedef struct packed {
         logic [ORDER_ID_W-1:0] order_id;   // [127:96] 32 bits
         logic [QTY_WIDTH-1:0]  qty;        // [95:64]  32 bits
-        logic [3:0]            pad_ptr;    // [63:60]   4 bits
-        logic [NODE_PTR_W-1:0] next_ptr;   // [59:48]  12 bits (Trỏ tới node kế tiếp)
-        logic [3:0]            pad_prev;   // [47:44]   4 bits
-        logic [NODE_PTR_W-1:0] prev_ptr;   // [43:32]  12 bits (Trỏ tới node đứng trước)
-        logic [31:0]           ts_low;     // [31:0]   32 bits (Timestamp 32-bit hạ tầng)
+        logic [15:0]           next_ptr;   // [63:48]  16 bits (Trỏ tới node kế tiếp)
+        logic [15:0]           prev_ptr;   // [47:32]  16 bits (Trỏ tới node đứng trước)
+        logic [15:0]           price;      // [31:16]  16 bits (Mức giá của node)
+        side_e                 side;       // [15:8]    8 bits (0=Buy, 1=Sell)
+        logic [7:0]            pad;        // [7:0]     8 bits
     } lob_node_t;
 
     // =========================================================================
@@ -115,10 +115,8 @@ package hft_pkg;
     // =========================================================================
     // Độ rộng chính xác 64 bits (8 bytes)
     typedef struct packed {
-        logic [3:0]            pad_head;   // [63:60]  4 bits
-        logic [NODE_PTR_W-1:0] head_ptr;   // [59:48] 12 bits (Lệnh đầu hàng)
-        logic [3:0]            pad_tail;   // [47:44]  4 bits
-        logic [NODE_PTR_W-1:0] tail_ptr;   // [43:32] 12 bits (Lệnh cuối hàng)
+        logic [15:0]           head_ptr;   // [63:48] 16 bits (Lệnh đầu hàng)
+        logic [15:0]           tail_ptr;   // [47:32] 16 bits (Lệnh cuối hàng)
         logic [QTY_WIDTH-1:0]  total_qty;  // [31:0]  32 bits (Tổng khối lượng)
     } price_descriptor_t;
 
