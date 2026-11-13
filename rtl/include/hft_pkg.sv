@@ -1,7 +1,7 @@
 // =============================================================================
 // File Name   : hft_pkg.sv
 // Project     : DetLOB - Deterministic Hardware Accelerator for HFT Limit Order Book
-// Target Part : AMD Xilinx Zynq UltraScale+ (xczu3eg-sbva484-1-e / KV260)
+// Target Part : AMD Xilinx Kria KV260 - K26 SOM (xck26-sfvc784-2LV-c / ZU5EV class)
 // Standard    : SystemVerilog IEEE 1800-2017
 // Description : Global package defining architecture parameters, 256-bit bus-aligned
 //               transaction contracts, node structures, and deterministic timing budgets.

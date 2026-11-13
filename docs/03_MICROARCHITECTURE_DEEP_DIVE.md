@@ -130,11 +130,11 @@
 
 Dựa trên tính toán lý thuyết vi mạch, toàn bộ lõi ĐA1 tiêu thụ tài nguyên cực kỳ gọn nhẹ:
 
-| Loại tài nguyên | Số lượng sử dụng | Tổng tài nguyên có sẵn trên KV260 (`xczu3eg`) | Tỷ lệ sử dụng (%) |
+| Loại tài nguyên | Số lượng sử dụng | Tổng tài nguyên có sẵn trên K26 (`xck26`, ZU5EV class) | Tỷ lệ sử dụng (%) |
 | :--- | :---: | :---: | :---: |
-| **LUT (Logic)** | ≈ 2.500 | 70.560 | **≈ 3.5%** |
-| **FF (Flip-Flops)** | ≈ 3.200 | 141.120 | **≈ 2.3%** |
-| **BRAM36K** | **6 khối** | 216 khối | **≈ 2.8%** |
-| **DSP48 Slices** | 0 | 360 | **0%** (Hoàn toàn không tốn DSP) |
+| **LUT (Logic)** | ≈ 2.500 | 117.120 | **≈ 2,1%** |
+| **FF (Flip-Flops)** | ≈ 3.200 | 233.280 | **≈ 1,4%** |
+| **BRAM36K** | ≈ 22–25 khối | 312 khối | **≈ 7–8%** |
+| **DSP48 Slices** | 0 | 1.248 | **0%** (Hoàn toàn không tốn DSP) |
 
-> **Nhận xét:** Thiết kế cực kỳ thanh thoát, chỉ chiếm chưa đầy **4% tài nguyên** của chip. Điều này để dành hơn 95% diện tích silicon cho việc tích hợp bus AXI, bộ giải mã ITCH, và mở rộng song song K-way ở Đồ án 2 và ĐATN!
+> **Nhận xét:** Thiết kế cực kỳ thanh thoát, chiếm dưới **8% tài nguyên** của chip. Điều này để dành hơn 90% diện tích silicon cho việc tích hợp bus AXI, bộ giải mã ITCH, và mở rộng song song K-way ở Đồ án 2 và ĐATN!

@@ -71,7 +71,7 @@ hft_deterministic_lob/
 - **Dung lượng sổ lệnh:** Tối đa **4.096 lệnh nằm chờ đồng thời** (Resting Orders in BRAM Node Pool).
 - **Không gian mức giá:** **1.024 mức giá** (Quản lý qua 2-Level Hierarchical Bitmap FFS).
 - **Khối lượng tối đa mỗi lệnh:** 2^32 - 1 ≈ 4.29 tỷ cổ phiếu / hợp đồng.
-- **Tần số xung nhịp mục tiêu:** **200 MHz** (Chu kỳ clock 5.0 ns) trên AMD Xilinx Zynq UltraScale+ (`xczu3eg` / `xczu5ev`).
+- **Tần số xung nhịp mục tiêu:** **200 MHz** (Chu kỳ clock 5.0 ns) trên AMD Xilinx Kria KV260 - K26 SOM (`xck26-sfvc784-2LV-c`).
 - **Độ trễ xử lý thuần túy (Hardware Latency):**
   - Lệnh Chèn vào sổ (Insert): **Đúng 5 chu kỳ clock (25 ns)**.
   - Lệnh Hủy (Cancel): **Đúng 4 chu kỳ clock (20 ns)**.

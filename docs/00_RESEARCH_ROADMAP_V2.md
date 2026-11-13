@@ -1,15 +1,5 @@
-# LỘ TRÌNH NGHIÊN CỨU TOÀN VĂN (PHIÊN BẢN V2)
-## Hardware Acceleration cho High-Frequency Trading trên FPGA/SoC
 
-**Đồ án 1 → Đồ án 2 → Đồ án Tốt nghiệp | Định hướng công bố Q1 (IEEE/ACM)**
 
-- **Chuyên ngành:** Điện tử Viễn thông — Thiết kế Vi mạch Số (Digital ASIC/FPGA)
-- **Đơn vị:** Trường Đại học Bách khoa Hà Nội (HUST)
-- **Tình trạng:** Phiên bản v2 — Đã tích hợp phản biện vi kiến trúc từ Hội đồng Thẩm định (Principal FPGA Architect & Senior IEEE Reviewer).
-
-> **Ghi chú phiên bản v2:** Thay đổi cốt lõi so với v1: loại bỏ hoàn toàn cấu trúc Binary Heap khỏi lõi Limit Order Book, thay thế bằng kiến trúc **Direct Price-Indexed Array + Hierarchical Bitmap (Find-First-Set)**. Toàn bộ interface contract giữa các đồ án (`order_txn_t`) được **giữ nguyên 100%**.
-
----
 
 ## PHẦN 1 — Phân tích Bottleneck & Đề xuất Hướng Đề tài
 
@@ -89,7 +79,7 @@ typedef struct packed {
 - SVA formal assertions kiểm tra: (1) Price-time priority, (2) Không trùng order_id, (3) Số lượng không âm, (4) Không leak bộ nhớ node, (5) Độ trễ cố định N chu kỳ (Bounded Model Checking qua SymbiYosys).
 - Coverage target: > 95% code coverage & functional coverage.
 
-**Sản phẩm bàn giao tại HUST:**
+**Sản phẩm bàn giao**
 - Mã nguồn RTL SystemVerilog tham số hóa + Testbench + Golden Model C++.
 - Báo cáo độ trễ tính bằng chu kỳ clock cố định cho Insert/Cancel/Match.
 - Báo cáo tổng hợp sơ bộ (Synthesis Report) trên chip Zynq UltraScale+.
@@ -131,16 +121,4 @@ typedef struct packed {
 
 ---
 
-## PHẦN 3 — Chiến lược Đóng gói Công bố Khoa học Q1
 
-### 3.1. Bốn "Bảo bối" quyết định bài báo được Accept
-1. **Signature Figure (Biểu đồ chữ ký):** Latency vs. Arrival Rate dưới Burst Traffic. Đường phân phối độ trễ phẳng lì (Flatline) không có tail latency vọt lên.
-2. **Xác nhận cận trên bằng Bounded Model Checking:** Chứng minh vi kiến trúc không có bất kỳ nhánh rẽ nào kéo dài độ trễ vượt quá cận trên.
-3. **Bảng PPA Trade-off:** Tỷ lệ sử dụng LUT logic, Distributed RAM, BRAM36K, URAM và công suất tiêu thụ thực tế.
-4. **Reproducible Artifact:** GitHub repo sạch với Makefile/TCL scripts để reviewer có thể tự clone và chạy `make test` tái tạo số liệu.
-
-### 3.2. Tạp chí & Hội nghị mục tiêu
-- **IEEE TVLSI** (Transactions on Very Large Scale Integration Systems)
-- **IEEE TCAS-I** (Transactions on Circuits and Systems I)
-- **ACM TRETS** (Transactions on Reconfigurable Technology and Systems)
-- **Hội nghị hàng đầu:** FCCM, FPGA (ISFPGA), FPL, DATE, DAC.

@@ -104,7 +104,7 @@ Phase 4:                                             [===Timing & Báo cáo===]
 ## GIAI ĐOẠN 4: TỔNG HỢP VẬT LÝ, TIMING & BÁO CÁO ĐA1 (TUẦN 12 – 15)
 
 ### Bước 4.1: Tổng hợp Logic & Place & Route (Vivado Implementation)
-- **Target Part:** Chip AMD Xilinx Zynq UltraScale+ `xczu3eg-sbva484-1-e` (Kria KV260).
+- **Target Part:** AMD Xilinx Kria KV260 - K26 SOM `xck26-sfvc784-2LV-c` (Zynq UltraScale+ ZU5EV class).
 - **Ràng buộc thời gian:** Khai báo xung clock 200 MHz (chu kỳ 5.0 ns) trong file `constraints.xdc`.
 - **DoD:** Chạy thành công toàn bộ flow Non-project TCL: `synth_design` → `opt_design` → `place_design` → `route_design`.
 
