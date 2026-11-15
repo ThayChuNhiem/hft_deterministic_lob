@@ -220,26 +220,36 @@ Nhằm đảm bảo khối lượng công việc vừa sức cho học phần Đ
 
 ---
 
-## 1.8. Kế hoạch thực hiện theo tuần (14 tuần) và Quản trị rủi ro
+## 1.8. Kế hoạch thực hiện theo khung học kỳ 20 tuần và Quản trị rủi ro
 
-### 1.8.1. Lộ trình thực hiện 14 tuần
+Học phần Đồ án 1 được tổ chức theo khung đào tạo 20 tuần của Trường Điện – Điện tử (ĐHBK Hà Nội). Tại thời điểm đánh giá mốc **Tuần 11**, đề tài đã hoàn tất toàn bộ khối lượng khảo sát lý thuyết, đặc tả kiến trúc vi mạch và xây dựng mô hình tham chiếu C++ bit-exact. Khối lượng công việc còn lại từ **Tuần 11 đến Tuần 20** tập trung trọn vẹn vào thiết kế RTL SystemVerilog, đồng kiểm chứng DPI-C, tổng hợp đóng thời gian trên Vivado và hoàn thiện quyển báo cáo tốt nghiệp học phần.
+
+### 1.8.1. Hiện trạng đề tài tại mốc Tuần 11 (Completed Baseline)
+
+* **Khảo sát & Cơ sở lý thuyết (Tuần 1 – 4):** Phân tích toàn diện cấu trúc dữ liệu LOB, quy chuẩn thời gian SEC CAT Rule 613 / MiFID II RTS 25, và các điểm nghẽn vi kiến trúc CPU (cache miss, tail latency jitter, branch misprediction).
+* **Đặc tả Vi kiến trúc phần cứng (Tuần 5 – 8):** Phân rã sơ đồ khối 5 module RTL, chốt định dạng bản tin 64-bit (`cmd_data`, `resp_data`), ngân sách tài nguyên BRAM tĩnh 96 KB trên chip Kria K26, và mô hình hóa hàm độ trễ tất định $L(k) = 5 + 3(k - 1)$ chu kỳ.
+* **Mô hình tham chiếu C++ Golden Model (Tuần 9 – 10):** Hiện thực hóa hoàn chỉnh mô hình C++17 bit-exact (`LobGoldenModel`) sử dụng mảng tĩnh phản chiếu 1:1 phần cứng (không cấp phát động), hoàn thành bộ unit test chức năng và đo kiểm sơ bộ độ trễ warm cache 20–50 ns. File định nghĩa giao diện phần cứng `rtl/include/hft_pkg.sv` đã được đóng băng.
+
+### 1.8.2. Lộ trình chi tiết 20 tuần (Trọng tâm giai đoạn tăng tốc Tuần 11 – 20)
 
 | Giai đoạn | Tuần | Nội dung công việc cụ thể | Sản phẩm bàn giao (Deliverables) |
 | --- | --- | --- | --- |
-| **GĐ 1: Đặc tả & Golden Model** | 1 – 2 | Chốt đặc tả bit-width, giao diện I/O, mã lỗi biên; xây dựng và kiểm thử `LobGoldenModel` C++17. | Tài liệu đặc tả kiến trúc; mã nguồn `golden_model.cpp` vượt qua 100% unit tests. |
-| **GĐ 2: Thiết kế RTL các khối con** | 3 – 5 | Viết RTL cho `ffs_bitmap_tree.sv`, `price_level_table.sv` và `order_node_pool.sv`; mô phỏng từng khối độc lập. | Mã nguồn RTL 3 module dữ liệu; waveform kiểm thử từng module. |
-| **GĐ 3: Tích hợp FSM & Top** | 6 – 8 | Viết `lob_ctrl_fsm.sv` và `lob_top.sv`; xử lý vòng lặp khớp lệnh đa mức và các điều kiện biên. | Lõi `lob_top` hoàn chỉnh chạy đúng các kịch bản thêm/hủy/khớp cơ bản. |
-| **GĐ 4: Đồng kiểm chứng DPI-C** | 9 – 10 | Xây dựng cầu nối DPI-C và Scoreboard tự động; chạy stress test $\ge 50.000$ giao dịch ngẫu nhiên và sửa lỗi góc. | Báo cáo log mô phỏng 50.000+ lệnh đạt `0 mismatch`. |
-| **GĐ 5: Tổng hợp Vivado & Đóng thời gian** | 11 – 12 | Chạy Synthesis & Place-and-Route trên Vivado cho chip `xck26`; tối ưu đường găng (critical path) đạt $200\text{ MHz}$. | Báo cáo Utilization (LUT/FF/BRAM) và Timing Summary ($\text{WNS} \ge 0$). |
-| **GĐ 6: Mở rộng & Viết báo cáo** | 13 – 14 | (Mở rộng) Chạy Formal SymbiYosys / Đo ILA trên board KV260; hoàn thiện quyển báo cáo và slide bảo vệ ĐA1. | Quyển báo cáo ĐA1 hoàn chỉnh, repo mã nguồn chuẩn hóa và demo. |
+| **GĐ 1: Khảo sát & Đặc tả** *(Đã xong)* | 1 – 4 | Nghiên cứu tài liệu IEEE, phân tích điểm nghẽn CPU vs FPGA, xác lập bài toán lõi sàn giao dịch. | Tài liệu khảo sát và tổng quan nghiên cứu. |
+| **GĐ 2: Vi kiến trúc & C++ Model** *(Đã xong)* | 5 – 10 | Chốt kiến trúc 5 module, đặc tả I/O 64-bit, viết và unit test `LobGoldenModel` C++17 bit-exact. | Mã nguồn C++ `lob_golden_model.cpp` (100% unit tests pass); `hft_pkg.sv`. |
+| **GĐ 3: Thiết kế RTL 3 Module Lưu trữ** *(Hiện tại)* | 11 – 12 | Viết RTL cho `ffs_bitmap_tree.sv` (cây FFS 2 tầng), `price_level_table.sv` (BRAM 1.024 mức giá), `order_node_pool.sv` (4.096 nodes + Free-List + Order ID LUT). Mô phỏng độc lập từng khối. | Mã nguồn RTL 3 module lưu trữ; waveform testbench đơn vị từng module. |
+| **GĐ 4: FSM Điều khiển & Tích hợp Top** | 13 – 14 | Viết `lob_ctrl_fsm.sv` (5 trạng thái điều phối con trỏ BRAM, giải quyết xung đột RAW) và `lob_top.sv` (top wrapper, bắt tay `valid`/`ready`, bộ đếm chu kỳ). Xử lý đầy đủ các ca lỗi biên. | Module `lob_top.sv` tích hợp hoàn chỉnh; waveform mô phỏng các ca lệnh cơ bản. |
+| **GĐ 5: Đồng mô phỏng DPI-C & Co-sim Stress Test** | 15 – 16 | Xây dựng testbench DPI-C kết nối RTL với `LobGoldenModel`; chạy kiểm thử tự động $\ge 50.000$ giao dịch ngẫu nhiên, phát hiện và sửa toàn bộ lỗi sai lệch trạng thái (zero mismatch). | Báo cáo log mô phỏng 50.000+ lệnh đạt 100% bit-exact; kịch bản testbench tự động. |
+| **GĐ 6: Tổng hợp Vivado & Đóng thời gian 200 MHz** | 17 – 18 | Thiết lập project Vivado cho chip `xck26-sfvc784-2LV-c`; chạy Synthesis và Implementation; phân tích đường găng logic và chốt thời gian đạt $\text{WNS} \ge 0\text{ ns}$ tại $200\text{ MHz}$. | Báo cáo Utilization (LUT/FF/BRAM) và Timing Summary ($\text{WNS} \ge 0$) từ Vivado. |
+| **GĐ 7: Nghiệm thu mở rộng (Formal / Board KV260)** | 19 | *Mức mở rộng:* Chạy kiểm chứng hình thức SymbiYosys (`bmc` + $k$-induction) trên mô hình thu nhỏ ($8 \times 16$) HOẶC nạp bitstream lên board Kria KV260 thật, kích hoạt burst và chụp sóng ILA. | File cấu hình `.sby` + log chứng minh bất biến / Ảnh chụp waveform ILA phần cứng. |
+| **GĐ 8: Hoàn thiện Báo cáo, Slide & Nộp bài** | 20 | Tổng hợp toàn bộ số liệu PPA, hoàn thiện quyển thuyết minh Đồ án 1 theo chuẩn học thuật, chuẩn bị slide và demo bảo vệ trước hội đồng. | **Quyển báo cáo Đồ án 1 hoàn chỉnh**, slide bảo vệ, repo mã nguồn mở GitHub. |
 
-### 1.8.2. Ma trận rủi ro kỹ thuật và Phương án dự phòng (Mitigation Plan)
+### 1.8.3. Ma trận rủi ro kỹ thuật và Phương án dự phòng (Mitigation Plan)
 
 | Rủi ro kỹ thuật | Mức độ | Nguyên nhân tiềm ẩn | Phương án xử lý / Dự phòng |
 | --- | --- | --- | --- |
 | **Vi phạm thời gian (WNS < 0) ở 200 MHz** | Trung bình | Đường tổ hợp giải mã Bitmap 1.024-bit nối tiếp ngay với địa chỉ đọc BRAM trong cùng 1 chu kỳ quá dài. | Tách bước giải mã Bitmap FFS và bước đọc BRAM bằng 1 thanh ghi pipeline (tăng độ trễ cố định từ 5 lên 6 chu kỳ = 30 ns nhưng đảm bảo đạt 200 MHz dễ dàng). |
 | **Suy luận nhầm BRAM thành LUTRAM** | Thấp | Cách viết mảng SystemVerilog không đúng mẫu đồng bộ đọc/ghi của Vivado, làm tốn LUT. | Áp dụng thuộc tính `(* ram_style = "block" *)` tường minh và viết đúng mẫu synchronous read/write chuẩn của Xilinx UltraScale+. |
-| **Không kịp tích hợp AXI4-Lite trên board thật** | Trung bình | Tốn thời gian cấu hình PetaLinux / Device Tree trên ARM PS của KV260. | Ưu tiên hoàn thành **Mức Tối Thiểu** (Post-Implementation Timing Simulation trên Vivado); nếu kịp thời gian thì dùng VIO + ILA nạp vector trực tiếp qua JTAG mà không cần viết driver Linux phức tạp. |
+| **Không kịp tích hợp AXI4-Lite trên board thật** | Trung bình | Tốn thời gian cấu hình PetaLinux / Device Tree trên ARM PS của KV260. | Giữ vững **Mức Tối Thiểu** (Post-Implementation Timing Simulation trên Vivado để nghiệm thu); phần board thật chỉ thực hiện ở Tuần 19 nếu các bước trước hoàn thành sớm. |
 
 ---
 
