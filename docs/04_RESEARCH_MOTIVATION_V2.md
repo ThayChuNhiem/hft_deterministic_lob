@@ -101,7 +101,7 @@ Từ bảng đối chiếu trên, đề tài tập trung giải quyết ba kho�
 
 1. **G1 — Khắc phục giới hạn trượt vùng đệm giá của kiến trúc lai (So với He et al., FPL 2017 [15]):** Công trình của He và cộng sự [15] sử dụng cấu trúc mảng bước giá cố định kết hợp bộ đệm 5 mức giá tốt nhất (top-5 cache) cho bài toán dựng lại sổ lệnh phía nhận dữ liệu; khi 5 mức giá đầu bị xóa hết, phần cứng phải tốn nhiều chu kỳ quét lại mảng để nạp bộ đệm mới, đồng thời chỉ cộng gộp tổng khối lượng ở mỗi mức giá chứ không duy trì hàng đợi FIFO của từng lệnh riêng biệt để khớp lệnh. Thiết kế `DetLOB` của đề tài giải quyết trọn vẹn bài toán **khớp lệnh của sàn**: quản lý từng node lệnh độc lập bằng danh sách liên kết kép trên BRAM (bảo toàn thứ tự thời gian từng lệnh) và dùng **cây Bitmap FFS 2 tầng (32-bit L1 $\times$ 32 nhóm L2)** bao phủ toàn bộ 1.024 mức giá, giúp tìm mức giá tốt nhất kế tiếp trong **đúng 1 chu kỳ** mà không bao giờ bị "trượt cache mức giá".
 2. **G2 — Bổ sung chứng minh hình thức (Formal Verification) bên cạnh mô phỏng ngẫu nhiên:** Các công bố hiện có chủ yếu kiểm chứng phần cứng bằng mô phỏng vector ngẫu nhiên. Trong hệ thống tài chính yêu cầu độ tin cậy cao, mô phỏng chỉ chứng minh thiết kế đúng trên các kịch bản đã chạy, không đảm bảo vắng mặt lỗi ở các góc trạng thái hiếm gặp (như rò rỉ con trỏ `free_list` khi thêm/hủy đan xen liên tục). Đề tài kết hợp đồng mô phỏng C++ DPI-C với **kiểm chứng hình thức bằng mô hình hóa quy nạp ($k$-induction / BMC)** trên cấu hình thu nhỏ để chứng minh toán học các bất biến an toàn của bộ cấp phát node và cận trên độ trễ.
-3. **G3 — Tính tái lập học thuật và phân tích định lượng cấu trúc dữ liệu:** Các thiết kế công nghiệp hoàn toàn đóng kín, trong khi các bài báo học thuật không công bố mã nguồn RTL kèm mô hình tham chiếu bit-exact. Đề tài xây dựng bộ mã nguồn mở hoàn chỉnh và phân tích định lượng sự đánh đổi tài nguyên – độ trễ giữa kiến trúc **Direct-Indexed + Bitmap ($O(1)$ tìm kiếm)** so với cấu trúc **Cây nhị phân / Binary Heap ($O(\log_2 M)$ cập nhật)** [14], [15].
+3. **G3 — Tính tái lập học thuật và phân tích định lượng cấu trúc dữ liệu:** Các thiết kế công nghiệp hoàn toàn đóng kín, trong khi các bài báo học thuật không công bố mã nguồn RTL kèm mô hình tham chiếu bit-exact. Đề tài xây dựng bộ mã nguồn mở hoàn chỉnh và phân tích, đối chiếu định lượng (dựa trên mô hình giải tích và số liệu công bố trong [14], [15]) về sự đánh đổi tài nguyên – độ trễ giữa kiến trúc **Direct-Indexed + Bitmap ($O(1)$ tìm kiếm)** so với cấu trúc **Cây nhị phân / Binary Heap ($O(\log_2 M)$ cập nhật) và Top-K Cache** [14], [15].
 
 ---
 
@@ -152,17 +152,17 @@ Hệ thống bao gồm 5 module SystemVerilog phân cấp rõ ràng:
 * **Bản tin lệnh đầu vào (`cmd_data [63:0]` kèm `cmd_valid` / `cmd_ready`):**
   * `op_type [1:0]`: `2'b01` = `ACT_NEW` (Thêm lệnh / Khớp lệnh), `2'b10` = `ACT_CANCEL` (Hủy lệnh theo ID).
   * `side [0:0]`: `1'b0` = Mua (`BID`), `1'b1` = Bán (`ASK`).
-  * `price_idx [9:0]`: Chỉ số mức giá tương đối từ `0` đến `1023` (1.024 ticks).
+  * `price_idx [11:0]`: Chỉ số mức giá mở rộng `0..4095` (trong đó `0..1023` là cửa sổ 1.024 ticks hợp lệ, các giá trị $\ge 1024$ dùng để kích hoạt bắt lỗi biên).
   * `order_id [11:0]`: Định danh lệnh duy nhất trong khoảng `0` đến `4095`.
   * `qty [15:0]`: Khối lượng cổ phiếu/hợp đồng của lệnh (`1` đến `65535`).
-  * `reserved [22:0]`: Dự phòng mở rộng (`symbol_id`, `flags` cho ĐA2).
+  * `reserved [20:0]`: Dự phòng mở rộng (`symbol_id`, `flags` cho ĐA2) — bảo đảm tổng $2 + 1 + 12 + 12 + 16 + 21 = 64\text{ bit}$.
 
 * **Bản tin phản hồi đầu ra (`resp_data [63:0]` kèm `resp_valid`):**
   * `status_code [2:0]`: `OK_RESTED`, `OK_MATCHED`, `OK_CANCELED`, `ERR_OUT_OF_RANGE`, `ERR_POOL_FULL`, `ERR_ID_INVALID`.
-  * `match_count [7:0]`: Số lượng lệnh đối ứng đã khớp ($k$).
+  * `match_count [6:0]`: Số lượng lệnh đối ứng đã khớp ($k$, tối đa 127 lệnh).
   * `exec_price [9:0]` & `exec_qty [15:0]`: Giá khớp cuối và tổng khối lượng khớp.
   * `best_bid [9:0]` & `best_ask [9:0]`: Giá mua cao nhất và giá bán thấp nhất sau giao dịch.
-  * `cycles_taken [7:0]`: Số chu kỳ thực tế phần cứng đã tiêu tốn cho giao dịch.
+  * `cycles_taken [7:0]`: Số chu kỳ thực tế phần cứng đã tiêu tốn cho giao dịch — bảo đảm tổng $3 + 7 + 10 + 16 + 10 + 10 + 8 = 64\text{ bit}$.
 
 ### 1.5.3. Giải thích ngân sách độ trễ 25 ns, Thông lượng và Xử lý xung đột BRAM
 
@@ -175,7 +175,7 @@ Hệ thống bao gồm 5 module SystemVerilog phân cấp rõ ràng:
 
 Kiến trúc đánh địa chỉ trực tiếp đánh đổi dải giá lấy tốc độ truy cập $O(1)$. Để phần cứng hoạt động an toàn tuyệt đối trong thực tế, các điều kiện biên được xử lý tất định ngay tại tầng giải mã:
 
-1. **Giới hạn cửa sổ giá 1.024 ticks (`ERR_OUT_OF_RANGE`):** Chỉ số `price_idx` biểu diễn độ lệch (offset) so với một mức giá cơ sở tham chiếu trong ngày (`Price = Base_Price + price_idx * Tick_Size`). Nếu lệnh đầu vào có `price_idx >= 1024`, FSM từ chối lệnh an toàn trong **1 chu kỳ** và xuất mã lỗi `ERR_OUT_OF_RANGE` mà không làm thay đổi trạng thái BRAM.
+1. **Giới hạn cửa sổ giá 1.024 ticks (`ERR_OUT_OF_RANGE`):** Chỉ số `price_idx` biểu diễn độ lệch (offset) so với một mức giá cơ sở tham chiếu trong ngày (`Price = Base_Price + price_idx * Tick_Size`). Nhờ trường `price_idx [11:0]` có độ rộng 12 bit, nếu lệnh đầu vào có `price_idx >= 1024` (tương đương bit `price_idx[11:10] != 2'b00`), mạch logic phát hiện ngay lập tức; FSM từ chối lệnh an toàn trong **1 chu kỳ** và xuất mã lỗi `ERR_OUT_OF_RANGE` mà không làm thay đổi trạng thái BRAM.
 2. **Tràn kho chứa 4.096 node (`ERR_POOL_FULL`):** Khi `free_count == 0` và một lệnh mới (hoặc phần dư của lệnh khớp một phần) cần cấp phát node lưu vào sổ, phần cứng không ghi đè bộ nhớ mà trả về mã `ERR_POOL_FULL` (hoặc hủy phần dư theo cơ chế Immediate-or-Cancel).
 3. **Trùng lặp hoặc không tồn tại `order_id` (`ERR_ID_INVALID`):** Mọi lệnh `ACT_NEW` có `order_id` đang hoạt động, hoặc lệnh `ACT_CANCEL` trỏ tới `order_id` không tồn tại đều bị chặn tại chu kỳ kiểm tra bảng `order_id_lut` và trả về `ERR_ID_INVALID` trong **2 chu kỳ**.
 
