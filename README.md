@@ -1,8 +1,7 @@
 # Deterministic Hardware Accelerator for High-Frequency Trading (HFT) Limit Order Book
 
 > **Đề tài:** Nghiên cứu & Thiết kế Vi kiến trúc Bộ tăng tốc Khớp lệnh Sổ lệnh Giới hạn (Limit Order Book) đạt Độ trễ Xác định (Deterministic / Zero-Jitter) trên nền tảng FPGA/SoC.  
-> **Lộ trình:** Đồ án 1 → Đồ án 2 → Đồ án Tốt nghiệp (ĐATN) | Định hướng công bố quốc tế Q1 (IEEE TVLSI / TCAS-I / ACM TRETS).  
-> **Chuyên ngành:** Điện tử Viễn thông — Thiết kế Vi mạch Số (Digital ASIC/FPGA) — Trường Đại học Bách khoa Hà Nội (HUST).  
+> **Lộ trình:** Đồ án 1 → Đồ án 2 → Đồ án Tốt nghiệp (ĐATN)).  
 > **Phiên bản Vi kiến trúc:** v2 (Direct Price-Indexed Array + Hierarchical Bitmap FFS).
 
 ---
@@ -18,7 +17,7 @@ Dự án này tập trung nghiên cứu và hiện thực hóa một **Lõi Kh�
 
 ---
 
-## 2. 🗺️ TIẾN TRÌNH 3 ĐỒ ÁN TẠI ĐHBK HÀ NỘI
+## 2. 🗺️ TIẾN TRÌNH 3 ĐỒ ÁN 
 
 ```
       [ĐỒ ÁN 1]                     [ĐỒ ÁN 2]                       [ĐỒ ÁN TỐT NGHIỆP]
