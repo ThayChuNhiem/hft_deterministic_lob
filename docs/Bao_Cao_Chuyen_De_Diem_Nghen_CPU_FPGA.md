@@ -15,12 +15,12 @@
 
 ## 1.1. Bối cảnh: Sổ lệnh giới hạn và yêu cầu tất định tại sàn giao dịch
 
-Sổ lệnh giới hạn (Limit Order Book — LOB) là cấu trúc dữ liệu lõi của các sàn giao dịch tài chính điện tử hiện đại [14]. Mọi lệnh mua (Bid) hoặc bán (Ask) giới hạn khi đi vào sàn đều phải được xếp hàng theo nguyên tắc **ưu tiên giá trước, thời gian sau (Price-Time Priority / FIFO)**, và mọi lệnh đối ứng phải được khớp chính xác theo thứ tự đó [14]. Ở góc độ vận hành sàn giao dịch (Trading Venue), tính đúng đắn của thứ tự khớp lệnh không đơn thuần là bài toán hiệu năng mà là **tính hợp lệ pháp lý của giao dịch**: một sai lệch về thứ tự hàng đợi hoặc rò rỉ vùng nhớ lệnh sẽ làm sai lệch toàn bộ trạng thái thị trường.
+Sổ lệnh giới hạn (Limit Order Book — LOB) là cấu trúc dữ liệu lõi của các sàn giao dịch tài chính điện tử hiện đại [1]. Mọi lệnh mua (Bid) hoặc bán (Ask) giới hạn khi đi vào sàn đều phải được xếp hàng theo nguyên tắc **ưu tiên giá trước, thời gian sau (Price-Time Priority / FIFO)**, và mọi lệnh đối ứng phải được khớp chính xác theo thứ tự đó [1]. Ở góc độ vận hành sàn giao dịch (Trading Venue), tính đúng đắn của thứ tự khớp lệnh không đơn thuần là bài toán hiệu năng mà là **tính hợp lệ pháp lý của giao dịch**: một sai lệch về thứ tự hàng đợi hoặc rò rỉ vùng nhớ lệnh sẽ làm sai lệch toàn bộ trạng thái thị trường.
 
-Song song với tính đúng đắn chức năng, hạ tầng sàn giao dịch hiện đại phải đối mặt với lưu lượng bản tin khổng lồ (lên tới hàng chục triệu sự kiện mỗi giây trong các phiên biến động mạnh theo báo cáo dung lượng OPRA Pillar của SIAC [1]) với định dạng sự kiện chuẩn hóa chặt chẽ như giao thức Nasdaq TotalView-ITCH 5.0 [2]. Đồng thời, các khung pháp lý quốc tế đặt ra yêu cầu nghiêm ngặt về tính minh bạch và độ chính xác nhãn thời gian đối với hệ thống của sàn giao dịch (Trading Venues / Plan Participants):
+Song song với tính đúng đắn chức năng, hạ tầng sàn giao dịch hiện đại phải đối mặt với lưu lượng bản tin khổng lồ (lên tới hàng chục triệu sự kiện mỗi giây trong các phiên biến động mạnh theo báo cáo dung lượng OPRA Pillar của SIAC [2]) với định dạng sự kiện chuẩn hóa chặt chẽ như giao thức Nasdaq TotalView-ITCH 5.0 [3]. Đồng thời, các khung pháp lý quốc tế đặt ra yêu cầu nghiêm ngặt về tính minh bạch và độ chính xác nhãn thời gian đối với hệ thống của sàn giao dịch (Trading Venues / Plan Participants):
 
 * **Tại Hoa Kỳ (SEC Rule 613 / CAT NMS Plan, Mục 6.8):** Yêu cầu các sàn giao dịch thành viên (Plan Participants/SROs) đồng bộ đồng hồ hệ thống trong ngưỡng $\le 100\ \mu\text{s}$ so với giờ chuẩn NIST và ghi nhận nhãn thời gian ở độ phân giải mili-giây hoặc tốt hơn (trong khi ngưỡng cho các công ty chứng khoán thành viên là 50 ms) [4].
-* **Tại Liên minh Châu Âu (MiFID II RTS 25):** Yêu cầu các sàn giao dịch có hoạt động giao dịch thuật toán tần suất cao đồng bộ đồng hồ trong phạm vi $\le 100\ \mu\text{s}$ với độ phân giải nhãn thời gian $\le 1\ \mu\text{s}$ [3].
+* **Tại Liên minh Châu Âu (MiFID II RTS 25):** Yêu cầu các sàn giao dịch có hoạt động giao dịch thuật toán tần suất cao đồng bộ đồng hồ trong phạm vi $\le 100\ \mu\text{s}$ với độ phân giải nhãn thời gian $\le 1\ \mu\text{s}$ [5].
 
 Để đảm bảo tính công bằng (market fairness) và khả năng ghi nhận trạng thái nhất quán khi xảy ra các đợt bùng nổ lệnh (micro-bursts), lõi khớp lệnh của sàn không chỉ cần thông lượng cao mà quan trọng hơn là cần **độ trễ tất định có cận trên xác định (bounded, deterministic latency)**.
 
@@ -34,17 +34,17 @@ Nói cách khác: **khi xét độ trễ trung bình trong điều kiện lý t�
 
 ### 1.2.1. Điểm nghẽn thứ nhất — Đuôi phân bố độ trễ (Tail Latency) và tính không tất định vi kiến trúc
 
-Trên vi xử lý đa dụng, thời gian thực thi của một thao tác cập nhật sổ lệnh không phải là hằng số mà là một biến ngẫu nhiên có phân bố lệch phải (heavy right-tailed distribution). Các nguồn gây biến thiên (jitter) xuất phát từ cả tầng hệ điều hành lẫn tầng phần cứng vi kiến trúc [5]–[7]:
+Trên vi xử lý đa dụng, thời gian thực thi của một thao tác cập nhật sổ lệnh không phải là hằng số mà là một biến ngẫu nhiên có phân bố lệch phải (heavy right-tailed distribution). Các nguồn gây biến thiên (jitter) xuất phát từ cả tầng hệ điều hành lẫn tầng phần cứng vi kiến trúc [6]–[8]:
 
 | Nguồn gây biến thiên trên CPU | Chi phí điển hình | Bản chất & Khả năng xử lý bằng phần mềm |
 |---|---|---|
 | Ngắt hệ điều hành (OS IRQ) & chuyển ngữ cảnh | $1,2 - 10\ \mu\text{s}$ | Tầng OS: Giảm thiểu được phần lớn nhờ `isolcpus`, `nohz_full`, ghim IRQ |
 | Tranh chấp siêu phân luồng (SMT) & thay đổi xung nhịp (DVFS) | Biến thiên $1,5 - 3\times$ | Tầng OS: Triệt tiêu được bằng cách tắt Hyper-Threading và khóa P-state |
-| Trượt bộ nhớ đệm L1D $\rightarrow$ L2 (Dữ liệu ngoài cache L1) | $12 - 20$ chu kỳ | Tầng vi kiến trúc: Ngẫu nhiên theo mẫu truy cập địa chỉ [6], [7] |
-| Trượt bộ nhớ đệm L2 $\rightarrow$ L3 / DRAM | $40 - 300$ chu kỳ | Tầng vi kiến trúc: Xảy ra khi tập dữ liệu vượt quá kích thước cache riêng [6], [7] |
-| Dự đoán nhánh sai (Branch Misprediction) trong vòng lặp quét giá | $14 - 20$ chu kỳ | Tầng vi kiến trúc: Phụ thuộc vào dữ liệu lệnh ngẫu nhiên từ luồng thị trường [6] |
+| Trượt bộ nhớ đệm L1D $\rightarrow$ L2 (Dữ liệu ngoài cache L1) | $12 - 20$ chu kỳ | Tầng vi kiến trúc: Ngẫu nhiên theo mẫu truy cập địa chỉ [7], [8] |
+| Trượt bộ nhớ đệm L2 $\rightarrow$ L3 / DRAM | $40 - 300$ chu kỳ | Tầng vi kiến trúc: Xảy ra khi tập dữ liệu vượt quá kích thước cache riêng [7], [8] |
+| Dự đoán nhánh sai (Branch Misprediction) trong vòng lặp quét giá | $14 - 20$ chu kỳ | Tầng vi kiến trúc: Phụ thuộc vào dữ liệu lệnh ngẫu nhiên từ luồng thị trường [7] |
 
-Các nghiên cứu thực nghiệm về nhiễu hệ điều hành trên hệ thống hiệu năng cao của Beckman và cộng sự [5] cho thấy việc cô lập nhân và tinh chỉnh hạt nhân (kernel tuning) có thể kiểm soát phần lớn nhiễu từ hệ điều hành, nhưng **không thể loại bỏ nhiễu vi kiến trúc phần cứng nội tại của lõi CPU** (bộ suy đoán nhánh, bộ nạp trước phần cứng prefetcher, phân xử bus nội bộ và trượt TLB) [6], [7]. Hệ quả là phần mềm trên CPU không thể cung cấp một **cận trên độ trễ chứng minh được bằng toán học (provable WCET)**.
+Các nghiên cứu thực nghiệm về nhiễu hệ điều hành trên hệ thống hiệu năng cao của Beckman và cộng sự [6] cho thấy việc cô lập nhân và tinh chỉnh hạt nhân (kernel tuning) có thể kiểm soát phần lớn nhiễu từ hệ điều hành, nhưng **không thể loại bỏ nhiễu vi kiến trúc phần cứng nội tại của lõi CPU** (bộ suy đoán nhánh, bộ nạp trước phần cứng prefetcher, phân xử bus nội bộ và trượt TLB) [7], [8]. Hệ quả là phần mềm trên CPU không thể cung cấp một **cận trên độ trễ chứng minh được bằng toán học (provable WCET)**.
 
 Ngược lại, một máy trạng thái hữu hạn (FSM) đồng bộ trên FPGA thao tác trực tiếp trên bộ nhớ SRAM trên chip (BRAM) không có bộ nhớ cache ẩn, không có dự đoán nhánh suy đoán và không có ngắt hệ điều hành. Do đó, độ trễ xử lý là một **hàm tất định phụ thuộc duy nhất vào (loại lệnh, $k$)**:
 * Với mọi thao tác đơn lẻ không khớp (`Insert` chờ, `Cancel`, hoặc `Reject` lỗi biên): FSM giữ đúng **hằng số tuyệt đối $L = 5$ chu kỳ** ($25\text{ ns}$ tại $200\text{ MHz}$).
@@ -77,9 +77,9 @@ Với quy mô cấu hình của đề tài (1.024 mức giá, 4.096 node lệnh 
 * **Tổng dung lượng logic thuần túy (Net State):** $18\text{ KB} + 32\text{ KB} + 8\text{ KB} + 8\text{ KB} = \mathbf{66\text{ KB}}$.
 * **Dung lượng vật lý ánh xạ BRAM (kèm cổng kép độc lập):** $\approx \mathbf{66\text{ KB} - 96\text{ KB}}$.
 
-Trên các kiến trúc CPU hiện đại, L1D cache (32–48 KB) là bộ nhớ đệm riêng của từng nhân [6], [7]. Toàn bộ khối trạng thái 66–96 KB vượt quá dung lượng L1D nên phải nằm trải ra trên L2 cache riêng (256 KB – 1 MB). Khi một nhân CPU được ghim độc quyền (`isolcpus`), L1D/L2 không bị trục xuất bởi các tiến trình ở nhân khác, và thao tác truy vết con trỏ tuần tự (pointer chasing: `order_id_map -> node_pool[curr] -> prev & next`) đạt tốc độ rất nhanh (~15–25 ns).
+Trên các kiến trúc CPU hiện đại, L1D cache (32–48 KB) là bộ nhớ đệm riêng của từng nhân [7], [8]. Toàn bộ khối trạng thái 66–96 KB vượt quá dung lượng L1D nên phải nằm trải ra trên L2 cache riêng (256 KB – 1 MB). Khi một nhân CPU được ghim độc quyền (`isolcpus`), L1D/L2 không bị trục xuất bởi các tiến trình ở nhân khác, và thao tác truy vết con trỏ tuần tự (pointer chasing: `order_id_map -> node_pool[curr] -> prev & next`) đạt tốc độ rất nhanh (~15–25 ns).
 
-Sự khác biệt cốt lõi giữa CPU và FPGA ở điểm này **không nằm ở tốc độ trung bình mà nằm ở tính cô lập tài nguyên phần cứng**: Trên chip SoC FPGA AMD Kria KV260 (`xck26`), toàn bộ khối trạng thái này được ánh xạ tĩnh vào khoảng **16–22 khối BRAM36K** (chiếm **11,1%–15,3%** trên tổng số 144 khối BRAM36K của chip, trong khi toàn bộ 64 khối UltraRAM vẫn còn trống hoàn toàn [8]). Vì BRAM là bộ nhớ SRAM định địa chỉ trực tiếp với các cổng đọc/ghi độc lập, mỗi bước truy xuất con trỏ trên FPGA **luôn luôn hoàn tất trong đúng 1 chu kỳ xung nhịp cố định**, triệt tiêu 100% sự phụ thuộc vào mẫu truy cập bộ nhớ.
+Sự khác biệt cốt lõi giữa CPU và FPGA ở điểm này **không nằm ở tốc độ trung bình mà nằm ở tính cô lập tài nguyên phần cứng**: Trên chip SoC FPGA AMD Kria KV260 (`xck26`), toàn bộ khối trạng thái này được ánh xạ tĩnh vào khoảng **16–22 khối BRAM36K** (chiếm **11,1%–15,3%** trên tổng số 144 khối BRAM36K của chip, trong khi toàn bộ 64 khối UltraRAM vẫn còn trống hoàn toàn [9]). Vì BRAM là bộ nhớ SRAM định địa chỉ trực tiếp với các cổng đọc/ghi độc lập, mỗi bước truy xuất con trỏ trên FPGA **luôn luôn hoàn tất trong đúng 1 chu kỳ xung nhịp cố định**, triệt tiêu 100% sự phụ thuộc vào mẫu truy cập bộ nhớ.
 
 ### 1.2.3. Điểm nghẽn thứ ba — Đường truyền I/O trực tiếp (Động lực sang Đồ án 2 và ĐATN)
 
@@ -89,11 +89,11 @@ Trong một hệ thống sàn giao dịch hoặc thành viên thị trường ho
 Mạng vật lý (10GbE PHY/MAC) ──► Giải mã giao thức (ITCH/OUCH) ──► Lõi Khớp lệnh (DetLOB) ──► Xuất bản tin phản hồi
 ```
 
-Các báo cáo kiểm định công nghiệp cho thấy ngay cả khi phần mềm CPU áp dụng kỹ thuật bỏ qua hạt nhân (kernel bypass như Solarflare OpenOnload / TCPDirect [9]), gói tin vẫn phải đi qua bus PCIe và bộ đệm DRAM của hệ thống máy chủ, gây độ trễ ở mức micro-giây. Ngược lại, các thiết kế xử lý luồng trực tiếp trên phần cứng FPGA đạt độ trễ mức nano-giây (báo cáo đo kiểm STAC-T0 của STAC Research công bố ngày 25/06/2024 trên card AMD Alveo UL3524 đạt kỷ lục 13,9 ns cho phản hồi mạng [10]). Việc hiện thực hóa lõi khớp lệnh `DetLOB` trên FPGA (PL) ngay từ Đồ án 1 là bước đệm bắt buộc để sang Đồ án 2 và ĐATN, hệ thống có thể kết nối trực tiếp qua bus AXI4-Stream với khối giải mã mạng 10GbE mà không phải trung chuyển qua PCIe hay DRAM.
+Các báo cáo kiểm định công nghiệp cho thấy ngay cả khi phần mềm CPU áp dụng kỹ thuật bỏ qua hạt nhân (kernel bypass như Solarflare OpenOnload / TCPDirect [10]), gói tin vẫn phải đi qua bus PCIe và bộ đệm DRAM của hệ thống máy chủ, gây độ trễ ở mức micro-giây. Ngược lại, các thiết kế xử lý luồng trực tiếp trên phần cứng FPGA đạt độ trễ mức nano-giây (báo cáo đo kiểm STAC-T0 của STAC Research công bố ngày 25/06/2024 trên card AMD Alveo UL3524 đạt kỷ lục 13,9 ns cho phản hồi mạng [11]). Việc hiện thực hóa lõi khớp lệnh `DetLOB` trên FPGA (PL) ngay từ Đồ án 1 là bước đệm bắt buộc để sang Đồ án 2 và ĐATN, hệ thống có thể kết nối trực tiếp qua bus AXI4-Stream với khối giải mã mạng 10GbE mà không phải trung chuyển qua PCIe hay DRAM.
 
 ### 1.2.4. Điểm nghẽn thứ tư — Tính tuần tự của sổ lệnh và Khả năng giải mã bit song song
 
-Quan hệ ưu tiên giá–thời gian mang bản chất **tuần tự nghiêm ngặt trên từng mã chứng khoán (single-symbol serialization)**: không thể chia nhỏ cuốn sổ lệnh của cùng một mã cho nhiều nhân CPU xử lý đồng thời mà không làm phát sinh chi phí đồng bộ khóa (lock/atomic contention) làm tăng vọt độ trễ [16]. Dù CPU x86-64 hiện đại có các lệnh thao tác bit nhanh như `TZCNT` / `BSR`, việc quét kiểm tra trên dải 1.024 mức giá (tương đương 16 thanh ghi 64-bit) vẫn đòi hỏi chuỗi lệnh lặp tuần tự hoặc lệnh vector AVX2.
+Quan hệ ưu tiên giá–thời gian mang bản chất **tuần tự nghiêm ngặt trên từng mã chứng khoán (single-symbol serialization)**: không thể chia nhỏ cuốn sổ lệnh của cùng một mã cho nhiều nhân CPU xử lý đồng thời mà không làm phát sinh chi phí đồng bộ khóa (lock/atomic contention) làm tăng vọt độ trễ [12]. Dù CPU x86-64 hiện đại có các lệnh thao tác bit nhanh như `TZCNT` / `BSR`, việc quét kiểm tra trên dải 1.024 mức giá (tương đương 16 thanh ghi 64-bit) vẫn đòi hỏi chuỗi lệnh lặp tuần tự hoặc lệnh vector AVX2.
 
 Ngược lại, FPGA cho phép khai thác **tính song song mức bit (bit-level parallelism)**: toàn bộ 1.024 mức giá được biểu diễn bằng mảng 1.024 bit (chia thành 32 nhóm $\times$ 32 bit) và được giải mã đồng thời bởi mạch tổ hợp ưu tiên phân cấp (Hierarchical Find-First-Set — FFS) để tìm ra mức giá tốt nhất mới chỉ trong **1 chu kỳ xung nhịp duy nhất** ngay khi mức giá hiện tại vừa cạn thanh khoản.
 
@@ -115,26 +115,26 @@ Ngược lại, FPGA cho phép khai thác **tính song song mức bit (bit-level
 
 ## 1.4. Danh mục tài liệu tham khảo (IEEE Format)
 
-[1] Securities Industry Automation Corporation (SIAC), "Options Price Reporting Authority (OPRA) Pillar Capacity Projections," New York, NY, USA, Tech. Rep., 2023. [Online]. Available: https://www.opraplan.com
+[1] M. D. Gould, M. A. Porter, S. Williams, M. McDonald, D. J. Fenn, and S. D. Howison, "Limit order books," Quantitative Finance, vol. 13, no. 11, pp. 1709–1742, Nov. 2013, doi: 10.1080/14697688.2013.803148.
 
-[2] Nasdaq Global Data Products, "Nasdaq TotalView-ITCH 5.0 Specification," Nasdaq Inc., New York, NY, USA, Tech. Spec., 2020.
+[2] Securities Industry Automation Corporation (SIAC), "Options Price Reporting Authority (OPRA) Pillar Capacity Projections," New York, NY, USA, Tech. Rep., 2023. [Online]. Available: https://www.opraplan.com
 
-[3] European Commission, "Commission Delegated Regulation (EU) 2017/574 of 7 June 2016 supplementing Directive 2014/65/EU of the European Parliament and of the Council with regard to regulatory technical standards for the level of accuracy of business clocks (RTS 25)," Official Journal of the European Union, vol. L 87, pp. 148–151, Mar. 2017.
+[3] Nasdaq Global Data Products, "Nasdaq TotalView-ITCH 5.0 Specification," Nasdaq Inc., New York, NY, USA, Tech. Spec., 2020.
 
 [4] Consolidated Audit Trail, LLC, "National Market System Plan Governing the Consolidated Audit Trail (CAT NMS Plan)," Section 6.8 "Clock Synchronization," U.S. Securities and Exchange Commission (SEC) Rule 613, Nov. 2016.
 
-[5] P. Beckman, K. Iskra, K. Yoshii, and S. Coghlan, "Benchmarking the effects of operating system interference on extreme-scale parallel machines," Cluster Computing, vol. 11, no. 1, pp. 3–16, Mar. 2008, doi: 10.1007/s10586-007-0047-2.
+[5] European Commission, "Commission Delegated Regulation (EU) 2017/574 of 7 June 2016 supplementing Directive 2014/65/EU of the European Parliament and of the Council with regard to regulatory technical standards for the level of accuracy of business clocks (RTS 25)," Official Journal of the European Union, vol. L 87, pp. 148–151, Mar. 2017.
 
-[6] Intel Corporation, "Intel 64 and IA-32 Architectures Optimization Reference Manual," Intel Corp., Santa Clara, CA, USA, Order No. 248966-048, Dec. 2023.
+[6] P. Beckman, K. Iskra, K. Yoshii, and S. Coghlan, "Benchmarking the effects of operating system interference on extreme-scale parallel machines," Cluster Computing, vol. 11, no. 1, pp. 3–16, Mar. 2008, doi: 10.1007/s10586-007-0047-2.
 
-[7] U. Drepper, "What Every Programmer Should Know About Memory," Red Hat Inc., Raleigh, NC, USA, Tech. Rep., Nov. 2007.
+[7] Intel Corporation, "Intel 64 and IA-32 Architectures Optimization Reference Manual," Intel Corp., Santa Clara, CA, USA, Order No. 248966-048, Dec. 2023.
 
-[8] Advanced Micro Devices, Inc. (AMD Xilinx), "Kria K26 System-on-Module (SOM) Data Sheet: Overview," Document DS987 (v1.3), San Jose, CA, USA, 2022.
+[8] U. Drepper, "What Every Programmer Should Know About Memory," Red Hat Inc., Raleigh, NC, USA, Tech. Rep., Nov. 2007.
 
-[9] Solarflare Communications, "OpenOnload and TCPDirect Ultra-Low Latency Network Stack Guide," Xilinx/Solarflare, San Jose, CA, USA, Tech. Paper, 2020. [Online]. Available: https://www.xilinx.com
+[9] Advanced Micro Devices, Inc. (AMD Xilinx), "Kria K26 System-on-Module (SOM) Data Sheet: Overview," Document DS987 (v1.3), San Jose, CA, USA, 2022.
 
-[10] Securities Technology Analysis Center (STAC), "STAC-T0 Benchmark Performance Report: AMD Alveo UL3524 with Exegy nxFramework," STAC Research, Chicago, IL, USA, Tech. Rep., Jun. 25, 2024. [Online]. Available: https://www.stacresearch.com
+[10] Solarflare Communications, "OpenOnload and TCPDirect Ultra-Low Latency Network Stack Guide," Xilinx/Solarflare, San Jose, CA, USA, Tech. Paper, 2020. [Online]. Available: https://www.xilinx.com
 
-[14] M. D. Gould, M. A. Porter, S. Williams, M. McDonald, D. J. Fenn, and S. D. Howison, "Limit order books," Quantitative Finance, vol. 13, no. 11, pp. 1709–1742, Nov. 2013, doi: 10.1080/14697688.2013.803148.
+[11] Securities Technology Analysis Center (STAC), "STAC-T0 Benchmark Performance Report: AMD Alveo UL3524 with Exegy nxFramework," STAC Research, Chicago, IL, USA, Tech. Rep., Jun. 25, 2024. [Online]. Available: https://www.stacresearch.com
 
-[16] M. Thompson, D. Farley, M. Barker, P. Gee, and A. Stewart, "Disruptor: High performance alternative to bounded queues for exchanging data between concurrent threads," LMAX Exchange, London, UK, Tech. White Paper, 2011.
+[12] M. Thompson, D. Farley, M. Barker, P. Gee, and A. Stewart, "Disruptor: High performance alternative to bounded queues for exchanging data between concurrent threads," LMAX Exchange, London, UK, Tech. White Paper, 2011.
