@@ -6,9 +6,9 @@
 * **Giải pháp đề xuất (DetLOB):** Thiết kế vi kiến trúc phần cứng chuyên dụng cho sổ lệnh giới hạn của sàn giao dịch trên SoC FPGA **AMD Xilinx Kria KV260 (`xck26-sfvc784-2LV-c`)** kết hợp: (1) Bảng mức giá đánh địa chỉ trực tiếp (**Direct-Indexed Price Table**, 1.024 ticks), (2) Cây tìm kiếm bit ưu tiên 2 tầng (**2-Level Hierarchical Find-First-Set Bitmap**, giải mã mức giá tốt nhất trong đúng 1 chu kỳ xung nhịp), và (3) Bộ cấp phát tĩnh kết hợp danh sách liên kết kép trên BRAM (**Static Free-List & Doubly-Linked Node Pool**, 4.096 lệnh hoạt động đồng thời).
 * **Đặc tính độ trễ tất định & Cận trên WCET:** Tại tần số mục tiêu $f_{\text{clk}} = 200\text{ MHz}$ ($T_{\text{clk}} = 5\text{ ns}$), độ trễ thực thi là một hàm tất định phụ thuộc duy nhất vào loại thao tác và số lệnh đối ứng được khớp $k$ ($0 \le k \le K_{\text{MAX}}$):
   * Mọi thao tác đơn lẻ không khớp — bao gồm thêm lệnh chờ (`Insert`), hủy lệnh (`Cancel`) và từ chối do vi phạm điều kiện biên (`Reject` lỗi) — đều hoàn tất trong **hằng số tuyệt đối $L = 5\text{ chu kỳ} = 25\text{ ns}$**.
-  * Thao tác khớp lệnh chủ động (`Match`) quét qua $k$ lệnh đối ứng ($1 \le k \le K_{\text{MAX}}$) tuân theo công thức tuyến tính chính xác $L(k) = 5 + 3(k - 1)$ chu kỳ. Với ngưỡng chặn kiến trúc $K_{\text{MAX}} = 16$ lệnh, thời gian thực thi xấu nhất được chứng minh bằng toán học là $\text{WCET} = L(16) = \mathbf{50\text{ chu kỳ}} = \mathbf{250\text{ ns}}$, hoàn toàn độc lập với độ đầy của sổ lệnh.
+  * Thao tác khớp lệnh chủ động (`Match`) quét qua $k$ lệnh đối ứng ($1 \le k \le K_{\text{MAX}}$) tuân theo công thức tuyến tính chính xác $L(k) = 2 + 3k = 5 + 3(k - 1)$ chu kỳ đối với trường hợp khớp hết hoặc chạm ngưỡng trần $K_{\text{MAX}} = 16$ kích hoạt tự động hủy phần dư (`OK_MATCHED_KMAX` để tránh hiện tượng crossed book). Với trường hợp khớp một phần $k \le 15$ lệnh và phần dư nạp vào nằm sổ, độ trễ là $L_{\text{res}}(k) = 5 + 3k$ chu kỳ. Với ngưỡng chặn kiến trúc $K_{\text{MAX}} = 16$ lệnh, thời gian thực thi xấu nhất được chứng minh bằng toán học là $\text{WCET} = \max(L(16), L_{\text{res}}(15)) = \mathbf{50\text{ chu kỳ}} = \mathbf{250\text{ ns}}$, hoàn toàn độc lập với độ đầy của sổ lệnh.
   * Thông tin giá tốt nhất (`Top-of-Book`: `best_bid`, `best_ask`) được cập nhật tức thời và xuất liên tục tại đầu ra (0-cycle continuous register readout).
-* **Đóng góp & Phạm vi Đồ án 1:** Hoàn thiện mô hình chuẩn C++ bit-exact (`LobGoldenModel`), thiết kế 5 module RTL SystemVerilog, xây dựng môi trường đồng mô phỏng DPI-C trên Vivado XSim vượt qua $\ge 50.000$ giao dịch ngẫu nhiên không sai lệch bit kèm tự động so khớp độ trễ lý thuyết $L(k)$; cam kết kiểm chứng hình thức Bounded Model Checking (SymbiYosys BMC) chứng minh bất biến bảo toàn bộ nhớ trên cấu hình thu nhỏ và đạt đóng thời gian (timing closure) ở $200\text{ MHz}$ trên Vivado (mức tối thiểu); hướng tới kiểm chứng quy nạp $k$-induction và đo kiểm thực tế trên board Kria KV260 qua AXI4-Lite + ILA (mức hoàn thiện mở rộng).
+* **Đóng góp & Phạm vi Đồ án 1:** Hoàn thiện mô hình chuẩn C++ bit-exact (`LobGoldenModel`), thiết kế 5 module RTL SystemVerilog, xây dựng môi trường đồng mô phỏng DPI-C trên Vivado XSim vượt qua $\ge 50.000$ giao dịch ngẫu nhiên không sai lệch bit kèm bộ đếm chu kỳ độc lập và quét kiểm tra toàn bộ trạng thái BRAM; cam kết kiểm chứng hình thức Bounded Model Checking (SymbiYosys BMC) trên cấu hình vi mô (4 mức giá $\times$ 4 node, $K_{\text{MAX}} = 2$, độ sâu $d = 40 - 60$ chu kỳ) chứng minh bất biến bảo toàn tài nguyên bộ nhớ cho mọi chuỗi lệnh hợp lệ từ reset và đạt đóng thời gian (timing closure) ở $200\text{ MHz}$ trên Vivado (mức tối thiểu); hoàn thiện mô hình giải tích định lượng cấu trúc dữ liệu so sánh Direct-Indexed vs Binary Heap / Top-K; hướng tới kiểm chứng quy nạp $k$-induction và đo kiểm thực tế trên board Kria KV260 qua AXI4-Lite + ILA (mức hoàn thiện mở rộng).
 
 ---
 
@@ -37,7 +37,7 @@ Trên vi xử lý đa dụng, thời gian thực thi của một thao tác cập
 
 | Nguồn gây biến thiên trên CPU | Chi phí điển hình | Bản chất & Khả năng xử lý bằng phần mềm |
 |---|---|---|
-| Ngắt hệ điều hành (OS IRQ) & chuyển ngữ cảnh | $1,2 - 10\ \mu\text{s}$ | Tầng OS: Giảm thiểu được phần lớn nhờ `isolcpus`, `nohz_full`, ghim IRQ [5] |
+| Ngắt hệ điều hành (OS IRQ) & chuyển ngữ cảnh | $1,2 - 10\ \mu\text{s}$ | Tầng OS: Giảm thiểu được phần lớn nhờ `isolcpus`, `nohz_full`, ghim IRQ |
 | Tranh chấp siêu phân luồng (SMT) & thay đổi xung nhịp (DVFS) | Biến thiên $1,5 - 3\times$ | Tầng OS: Triệt tiêu được bằng cách tắt Hyper-Threading và khóa P-state |
 | Trượt bộ nhớ đệm L1D $\rightarrow$ L2 (Dữ liệu ngoài cache L1) | $12 - 20$ chu kỳ | Tầng vi kiến trúc: Ngẫu nhiên theo mẫu truy cập địa chỉ [6], [7] |
 | Trượt bộ nhớ đệm L2 $\rightarrow$ L3 / DRAM | $40 - 300$ chu kỳ | Tầng vi kiến trúc: Xảy ra khi tập dữ liệu vượt quá kích thước cache riêng [6], [7] |
@@ -47,7 +47,10 @@ Các nghiên cứu thực nghiệm về nhiễu hệ điều hành trên hệ th
 
 Ngược lại, một máy trạng thái hữu hạn (FSM) đồng bộ trên FPGA thao tác trực tiếp trên bộ nhớ SRAM trên chip (BRAM) không có bộ nhớ cache ẩn, không có dự đoán nhánh suy đoán và không có ngắt hệ điều hành. Do đó, độ trễ xử lý là một **hàm tất định phụ thuộc duy nhất vào (loại lệnh, $k$)**:
 * Với mọi thao tác đơn lẻ không khớp (`Insert` chờ, `Cancel`, hoặc `Reject` lỗi biên): FSM giữ đúng **hằng số tuyệt đối $L = 5$ chu kỳ** ($25\text{ ns}$ tại $200\text{ MHz}$).
-* Với lệnh khớp chủ động (`Match`) quét qua $k$ lệnh chờ ($1 \le k \le K_{\text{MAX}}$): Độ trễ tuân theo công thức chính xác $L(k) = 5 + 3(k - 1)$ chu kỳ. Với ngưỡng chặn phần cứng $K_{\text{MAX}} = 16$, cận trên thời gian thực thi xấu nhất là $\text{WCET} = L(16) = \mathbf{50\text{ chu kỳ}} = \mathbf{250\text{ ns}}$, bất kể sổ lệnh đang chứa 10 hay 4.096 lệnh.
+* Với lệnh khớp chủ động (`Match`) quét qua $k$ lệnh chờ ($1 \le k \le K_{\text{MAX}}$):
+  * Khớp hết khối lượng hoặc chạm ngưỡng trần $K_{\text{MAX}} = 16$ hủy phần dư: Độ trễ tuân theo công thức chính xác $L(k) = 2 + 3k = 5 + 3(k - 1)$ chu kỳ.
+  * Khớp $k \le 15$ lệnh và phần dư nạp vào nằm sổ: Độ trễ là $L_{\text{res}}(k) = 5 + 3k$ chu kỳ.
+  * Với ngưỡng chặn phần cứng $K_{\text{MAX}} = 16$, cận trên thời gian thực thi xấu nhất là $\text{WCET} = \max(L(16), L_{\text{res}}(15)) = \mathbf{50\text{ chu kỳ}} = \mathbf{250\text{ ns}}$, bất kể sổ lệnh đang chứa 10 hay 4.096 lệnh.
 
 ### 1.2.2. Điểm nghẽn thứ hai — Truy vết con trỏ tuần tự và Tính cô lập tài nguyên của BRAM
 
@@ -57,8 +60,13 @@ Với quy mô cấu hình của đề tài (1.024 mức giá, 4.096 node lệnh 
   Mỗi mức gồm `head_ptr [11:0]` (12b), `tail_ptr [11:0]` (12b), `total_qty [31:0]` (32b), `order_count [15:0]` (16b) $\implies$ **72 bit/mức (9 Byte)**.
   Dung lượng logic thuần túy: $2.048 \times 72\text{ bit} = 147.456\text{ bit} = \mathbf{18\text{ KB}}$.
 * **Kho node lệnh (`order_node_pool`, 4.096 nodes):**
-  Mỗi node gồm `price_idx [9:0]` (10b), `qty [15:0]` (16b), `prev_ptr [11:0]` (12b), `next_ptr [11:0]` (12b), `valid [0:0]` (1b) $\implies$ **51 bit thực**.
-  Để tối ưu hóa cổng truy cập BRAM và căn lề word-aligned trong cả RTL lẫn struct C++ mà không tốn logic cắt ghép bit, mỗi node được đệm tĩnh thành **64 bit (8 Byte)** (51 bit dữ liệu + 13 bit padding).
+  Mỗi node gồm `price_idx [9:0]` (10b), `side [0:0]` (1b), `qty [15:0]` (16b), `prev_ptr [11:0]` (12b), `next_ptr [11:0]` (12b), `valid [0:0]` (1b) $\implies$ **52 bit thực**.
+  Để tối ưu hóa cổng truy cập BRAM và căn lề word-aligned trong cả RTL lẫn struct C++ mà không tốn logic cắt ghép bit, mỗi node được đệm tĩnh thành **64 bit (8 Byte)** (52 bit dữ liệu + 12 bit padding), chia thành bốn trường căn 16-bit:
+  * Word 0 `[15:0]`: `qty [15:0]` (16b).
+  * Word 1 `[31:16]`: `price_idx [9:0]` (10b) + `side [0:0]` (1b) + padding (5b).
+  * Word 2 `[47:32]`: `prev_ptr [11:0]` (12b) + padding (4b).
+  * Word 3 `[63:48]`: `next_ptr [11:0]` (12b) + `valid [0:0]` (1b) + padding (3b).
+  Cấu trúc này cho phép bộ điều khiển BRAM sử dụng **Byte-Write Enable (`we [7:0]`)** để sửa riêng con trỏ `prev_ptr` hoặc `next_ptr` của các node lân cận trong đúng 1 chu kỳ mà không cần chu kỳ đọc trước toàn bộ 64-bit của node (loại bỏ hoàn toàn Read-Modify-Write cycle). Trường `side` lưu trực tiếp trong node giúp thao tác `Cancel` nhận diện ngay phía Bid/Ask từ `order_id` mà không cần tra cứu thêm.
   Dung lượng logic: $4.096 \times 64\text{ bit} = 262.144\text{ bit} = \mathbf{32\text{ KB}}$.
 * **Ngăn xếp con trỏ rảnh (`free_list`, 4.096 phần tử):** $4.096 \times 12\text{ bit}$ (đệm 16-bit word trong RAM) = $4096 \times 16\text{ bit} = \mathbf{8\text{ KB}}$.
 * **Bảng ánh xạ ID (`order_id_lut`, 4.096 phần tử):** $4.096 \times 12\text{ bit}$ (đệm 16-bit word trong RAM) = $4096 \times 16\text{ bit} = \mathbf{8\text{ KB}}$.
@@ -78,7 +86,7 @@ Trong một hệ thống sàn giao dịch hoặc thành viên thị trường ho
 Mạng vật lý (10GbE PHY/MAC) ──► Giải mã giao thức (ITCH/OUCH) ──► Lõi Khớp lệnh (DetLOB) ──► Xuất bản tin phản hồi
 ```
 
-Các báo cáo kiểm định công nghiệp cho thấy ngay cả khi phần mềm CPU áp dụng kỹ thuật bỏ qua hạt nhân (kernel bypass như Solarflare OpenOnload/TCPDirect [9]), gói tin vẫn phải đi qua bus PCIe và bộ đệm DRAM của hệ thống máy chủ, gây độ trễ từ $1 - 3\ \mu\text{s}$. Ngược lại, các thiết kế xử lý luồng trực tiếp trên phần cứng FPGA đạt độ trễ mức nano-giây (báo cáo đo kiểm STAC-T0 của STAC Research công bố ngày 25/06/2024 trên card AMD Alveo UL3524 đạt kỷ lục 13,9 ns cho phản hồi mạng [10]). Việc hiện thực hóa lõi khớp lệnh `DetLOB` trên FPGA (PL) ngay từ Đồ án 1 là bước đệm bắt buộc để sang Đồ án 2 và ĐATN, hệ thống có thể kết nối trực tiếp qua bus AXI4-Stream với khối giải mã mạng 10GbE mà không phải trung chuyển qua PCIe hay DRAM.
+Các báo cáo kiểm định công nghiệp cho thấy ngay cả khi phần mềm CPU áp dụng kỹ thuật bỏ qua hạt nhân (kernel bypass như Solarflare OpenOnload / TCPDirect [9]), gói tin vẫn phải đi qua bus PCIe và bộ đệm DRAM của hệ thống máy chủ, gây độ trễ từ $800\text{ ns} - 2\ \mu\text{s}$. Ngược lại, các thiết kế xử lý luồng trực tiếp trên phần cứng FPGA đạt độ trễ mức nano-giây (báo cáo đo kiểm STAC-T0 của STAC Research công bố ngày 25/06/2024 trên card AMD Alveo UL3524 đạt kỷ lục 13,9 ns cho phản hồi mạng [10]). Việc hiện thực hóa lõi khớp lệnh `DetLOB` trên FPGA (PL) ngay từ Đồ án 1 là bước đệm bắt buộc để sang Đồ án 2 và ĐATN, hệ thống có thể kết nối trực tiếp qua bus AXI4-Stream với khối giải mã mạng 10GbE mà không phải trung chuyển qua PCIe hay DRAM.
 
 ### 1.2.4. Điểm nghẽn thứ tư — Tính tuần tự của sổ lệnh và Khả năng giải mã bit song song
 
@@ -99,15 +107,15 @@ Việc ứng dụng phần cứng FPGA vào xử lý dữ liệu tài chính và
 | **Leber et al.** (IEEE FPL 2011) [12] | Xử lý feed phía Trader (Tick-to-Trade) | **Không duy trì sổ lệnh LOB** (tập trung giải mã giao thức FAST/UDP/IP và tính tỷ giá) | Không lưu lệnh lẻ, không có hàng đợi FIFO | Đo thực nghiệm mạng | Không |
 | **Lockwood et al.** (IEEE HOTI 2012) [11] | Thư viện IP phần cứng HFT phía Trader | **Không có sổ lệnh LOB** (thư viện hạ tầng 10GbE MAC/PCS, parser, interface bộ nhớ) | Không quản lý hàng đợi và khớp lệnh đa mức | Mô phỏng & đo phần cứng | Không |
 | **Sadoghi et al.** (PVLDB 2010) [13] | Lọc sự kiện & đối sánh mẫu (Pub/Sub Engine) | Cây quy tắc sự kiện (không lưu sổ lệnh đầy đủ) | Chỉ lọc và chuyển tiếp luồng sự kiện | Đo thông lượng | Không |
-| **He et al.** (IEEE FPL 2017) [15] | Dựng lại sổ lệnh phía Trader (Order Book Update) | Mảng bước giá cố định (Fixed-tick) + Clipped reduction tree + Cache 5 mức giá đầu | **Chỉ cộng gộp khối lượng theo mức giá (price-level aggregated)**; không lưu từng lệnh lẻ | Mô phỏng & đo trên board FPGA | Không |
-| **Puranik et al.** (Electronics 2023) [17] | Lõi khớp lệnh phía Sàn giao dịch (HLS Matching Engine) | Cấu trúc mảng quản lý bằng High-Level Synthesis (C/C++ HLS) | Hỗ trợ khớp lệnh nhưng pipeline phụ thuộc dữ liệu bộ nhớ, **độ trễ biến thiên, không có WCET cố định** | Đo đạc mô phỏng HLS | Không công bố RTL tối ưu |
-| **Đề tài này (`DetLOB`)** | **Lõi khớp lệnh sàn (Exchange Matching Engine Core)** | **Direct-Indexed (1.024 ticks) + Cây Bitmap FFS 2 tầng + Free-List 4.096 nodes** | **Quản lý đầy đủ từng lệnh lẻ (FIFO doubly-linked list), khớp lệnh đa mức, tìm giá tốt nhất 1 chu kỳ trên toàn dải 1.024 mức** | **DPI-C bit-exact + Formal Verification (SymbiYosys BMC/k-induction) + Đo Vivado/KV260** | **Có (Mã nguồn mở đầy đủ)** |
+| **He et al.** (IEEE FPL 2017) [15] | Cập nhật sổ lệnh (Order Book Update — OBU) | Mảng bước giá cố định (Fixed-tick) + Clipped reduction tree + Cache 5 mức giá đầu | Duy trì hàng đợi FIFO cho thao tác hủy/sửa; **không có lõi khớp lệnh (No Matching Engine)** | Mô phỏng & đo trên board FPGA | Không |
+| **Puranik et al.** (Electronics 2023) [17] | Lõi khớp lệnh sàn giao dịch bằng HLS (HLS Matching Engine) | Cấu trúc mảng quản lý bằng High-Level Synthesis (C/C++ HLS flow) | Báo cáo tăng thông lượng từ 1 lên 2 triệu lệnh/giây; pipeline phụ thuộc dữ liệu C/C++, **không phân tích hay bảo đảm WCET cố định** | Đo đạc mô phỏng HLS | **Không** (Data Availability Statement xác nhận không cấp code) |
+| **Đề tài này (`DetLOB`)** | **Lõi khớp lệnh sàn (Exchange Matching Engine Core)** | **Direct-Indexed (1.024 ticks) + Cây Bitmap FFS 2 tầng + Free-List 4.096 nodes** | **Quản lý đầy đủ từng lệnh lẻ (FIFO doubly-linked list), khớp lệnh đa mức, WCET toán học $\le 50$ ck, tìm giá tốt nhất 1 ck** | **DPI-C bit-exact + Formal BMC ($4 \times 4$) + Đo Vivado/KV260** | **Có (Mã nguồn mở đầy đủ)** |
 
 Từ bảng đối chiếu trên, đề tài tập trung giải quyết ba khoảng trống học thuật và kỹ thuật cụ thể:
 
-1. **G1 — Phân biệt dứt khoát vai trò Sàn (Matching) với vai trò Trader (Reconstruction, so với He et al. [15]):** Công trình của He và cộng sự [15] giải quyết bài toán dựng lại sổ lệnh phía người giao dịch nhằm quan sát độ sâu thị trường (market depth) bằng cách cộng gộp tổng khối lượng ở mỗi mức giá; thiết kế này không duy trì danh sách liên kết của từng lệnh lẻ và không hỗ trợ cơ chế khớp lệnh đối ứng. Thiết kế `DetLOB` giải quyết bài toán **lõi khớp lệnh của sàn giao dịch**: quản lý từng node lệnh độc lập bằng danh sách liên kết kép trên BRAM (bảo toàn nghiêm ngặt thứ tự FIFO của từng lệnh) và dùng cây Bitmap FFS 2 tầng bao phủ toàn bộ 1.024 mức giá để tìm giá tốt nhất kế tiếp trong đúng 1 chu kỳ.
+1. **G1 — Phân biệt dứt khoát vai trò Lõi khớp lệnh (Matching Engine) với vai trò Cập nhật sổ lệnh (Order Book Update, so với He et al. [15]):** Công trình của He và cộng sự [15] giải quyết bài toán cập nhật sổ lệnh (Order Book Update) khi nhận dữ liệu thị trường (chỉ cập nhật thêm, sửa, hủy mức giá) mà không thực hiện chức năng đối ứng khớp lệnh giữa hai phía Bid và Ask. Thiết kế `DetLOB` giải quyết bài toán **lõi khớp lệnh của sàn giao dịch**: quản lý từng node lệnh độc lập bằng danh sách liên kết kép trên BRAM (bảo toàn nghiêm ngặt thứ tự FIFO của từng lệnh), đối ứng khớp lệnh đa mức theo ưu tiên giá-thời gian, và dùng cây Bitmap FFS 2 tầng bao phủ toàn bộ 1.024 mức giá để tìm giá tốt nhất kế tiếp trong đúng 1 chu kỳ.
 2. **G2 — Bổ sung chứng minh hình thức (Formal Verification) bảo toàn cận trên độ trễ và tài nguyên bộ nhớ:** Các công bố học thuật và một số dự án mã mở sơ khai trên GitHub thường chỉ dừng lại ở mô phỏng vector ngẫu nhiên. Trong hệ thống sàn giao dịch, mô phỏng ngẫu nhiên không thể vét cạn các góc lỗi tiềm ẩn (như rò rỉ con trỏ trong `free_list` khi lệnh xen kẽ thêm/hủy liên tục). Đề tài đưa phương pháp **kiểm chứng hình thức bằng mô hình hóa BMC và quy nạp $k$-induction (SymbiYosys)** vào quy trình thiết kế để chứng minh toán học bất biến không rò rỉ bộ nhớ và tính tất định của độ trễ.
-3. **G3 — Tái lập học thuật và Phân tích định lượng cấu trúc dữ liệu:** Các giải pháp thương mại hoàn toàn đóng kín. Đề tài công bố bộ mã nguồn mở RTL SystemVerilog hoàn chỉnh kèm mô hình tham chiếu C++ bit-exact, đồng thời xây dựng mô hình giải tích định lượng đối chiếu sự đánh đổi tài nguyên – độ trễ giữa kiến trúc **Direct-Indexed + Bitmap ($O(1)$ tìm kiếm)** so với cấu trúc **Cây nhị phân / Binary Heap ($O(\log_2 M)$ cập nhật)** và kiến trúc Top-K Cache.
+3. **G3 — Tái lập học thuật và Phân tích định lượng cấu trúc dữ liệu:** Các giải pháp thương mại hoàn toàn đóng kín. Đề tài công bố bộ mã nguồn mở RTL SystemVerilog hoàn chỉnh kèm mô hình tham chiếu C++ bit-exact, đồng thời xây dựng mô hình giải tích định lượng đối chiếu sự đánh đổi tài nguyên – độ trễ giữa kiến trúc **Direct-Indexed + Bitmap ($O(1)$ tìm kiếm)** so với cấu trúc **Cây nhị phân / Binary Heap ($O(\log_2 M)$ cập nhật)** và kiến trúc Top-K Cache (đưa vào kết quả bàn giao ở Tuần 20).
 
 ---
 
@@ -125,7 +133,7 @@ Từ bảng đối chiếu trên, đề tài tập trung giải quyết ba kho�
 ## 1.5. Câu hỏi nghiên cứu
 
 * **RQ1 (Kiến trúc & Tài nguyên):** Với ngân sách tài nguyên của SoC FPGA AMD Kria KV260 (`xck26`), việc hiện thực hóa lõi khớp lệnh 1.024 mức giá và 4.096 lệnh theo kiến trúc Direct-Indexed + Bitmap FFS tiêu tốn bao nhiêu khối BRAM36K, LUT, FF và có đạt tần số đóng thời gian $200\text{ MHz}$ ($\text{WNS} \ge 0$) hay không?
-* **RQ2 (Tính tất định & Cận trên độ trễ):** Có thể chứng minh bằng phương pháp hình thức (Bounded Model Checking trên cấu hình thu nhỏ) rằng độ trễ thực thi luôn tuân theo hàm tất định $L(0) = 5$ chu kỳ và $L(k) = 5 + 3(k - 1)$ chu kỳ với $\text{WCET} \le 50$ chu kỳ ($250\text{ ns}$), đồng thời bộ cấp phát `free_list` bảo toàn bất biến không rò rỉ node hay không?
+* **RQ2 (Tính tất định & Cận trên độ trễ):** Có thể chứng minh bằng phương pháp hình thức (Bounded Model Checking trên cấu hình thu nhỏ $4 \times 4$, $K_{\text{MAX}} = 2$, độ sâu $d = 40 - 60$ chu kỳ) rằng độ trễ thực thi luôn tuân theo hàm tất định $L(0) = 5$ chu kỳ, $L(k) = 2 + 3k = 5 + 3(k - 1)$ chu kỳ ($1 \le k \le 16$), $L_{\text{res}}(k) = 5 + 3k$ chu kỳ ($1 \le k \le 15$) với $\text{WCET} \le 50$ chu kỳ ($250\text{ ns}$), đồng thời bộ cấp phát `free_list` bảo toàn bất biến không rò rỉ node hay không?
 * **RQ3 (Đồng kiểm chứng Bit-Exact):** Mô hình tham chiếu C++ (`LobGoldenModel`) giao tiếp qua SystemVerilog DPI-C trên Vivado XSim có thể kiểm chứng tự động hàng chục nghìn giao dịch ngẫu nhiên với tỷ lệ khớp trạng thái tuyệt đối (zero mismatch) và khớp chính xác số chu kỳ xung nhịp lý thuyết hay không?
 
 ---
@@ -159,10 +167,10 @@ Kiến trúc phần cứng của lõi `DetLOB` được thiết kế theo mô h�
 Hệ thống bao gồm 5 module SystemVerilog phân cấp rõ ràng:
 
 1. **`lob_top.sv`:** Module bao ngoài (top-level wrapper), quản lý giao tiếp bắt tay `cmd_valid`/`cmd_ready`, xuất kết quả thực thi `resp_data [63:0]`, xuất liên tục trạng thái Top-of-Book (`best_bid [9:0]`, `best_ask [9:0]`, `best_bid_valid`, `best_ask_valid`), và tích hợp bộ đếm chu kỳ thực thi (`cycles_taken`).
-2. **`lob_ctrl_fsm.sv`:** Bộ điều khiển trung tâm điều phối đường dữ liệu 5 trạng thái (`S_IDLE`, `S_LOOKUP`, `S_EXEC_LINK`, `S_MATCH_SWEEP`, `S_COMMIT`) và quản lý vòng lặp quét khớp lệnh có chặn trần $K_{\text{MAX}} = 16$.
+2. **`lob_ctrl_fsm.sv`:** Bộ điều khiển trung tâm điều phối đường dữ liệu qua 6 trạng thái FSM rõ ràng (`S_IDLE`, `S_LOOKUP`, `S_EXEC_LINK`, `S_MATCH_SWEEP`, `S_ERROR_HOLD`, `S_COMMIT`) và quản lý vòng lặp quét khớp lệnh có chặn trần $K_{\text{MAX}} = 16$.
 3. **`ffs_bitmap_tree.sv`:** Cây bitmap phân cấp 2 tầng cho mỗi phía Bid và Ask (Tầng L1 gồm 32 bit tóm tắt nhóm, Tầng L2 gồm $32 \times 32 = 1.024$ bit chi tiết), tích hợp bộ mã hóa ưu tiên tổ hợp (`Find-First-Set` cho Ask thấp nhất và `Find-Last-Set` cho Bid cao nhất) trong đúng 1 chu kỳ xung nhịp.
 4. **`price_level_table.sv`:** Quản lý mảng BRAM lưu trữ siêu dữ liệu của 1.024 mức giá Bid và 1.024 mức giá Ask (`head_ptr [11:0]`, `tail_ptr [11:0]`, `total_qty [31:0]`, `order_count [15:0]`).
-5. **`order_node_pool.sv` (tích hợp `order_id_lut`):** Quản lý kho 4.096 node lệnh trong BRAM (`price_idx`, `qty`, `prev_ptr`, `next_ptr`, `valid`), ngăn xếp cấp phát node rảnh `free_list` thao tác $O(1)$, và bảng ánh xạ trực tiếp `order_id [11:0] -> node_idx [11:0]`.
+5. **`order_node_pool.sv` (tích hợp `order_id_lut`):** Quản lý kho 4.096 node lệnh trong BRAM (`price_idx`, `side`, `qty`, `prev_ptr`, `next_ptr`, `valid`), hỗ trợ Byte-Write Enable (`we [7:0]`), ngăn xếp cấp phát node rảnh `free_list` thao tác $O(1)$, và bảng ánh xạ trực tiếp `order_id [11:0] -> node_idx [11:0]`.
 
 ### 1.6.2. Định dạng bản tin Vào/Ra chuẩn hóa (64-bit I/O Interface)
 
@@ -175,7 +183,15 @@ Hệ thống bao gồm 5 module SystemVerilog phân cấp rõ ràng:
   * `reserved [20:0]`: Dự phòng mở rộng (`symbol_id`, `flags` cho ĐA2) — bảo đảm tổng $2 + 1 + 12 + 12 + 16 + 21 = \mathbf{64\text{ bit}}$.
 
 * **Bản tin phản hồi đầu ra (`resp_data [63:0]` kèm `resp_valid`):**
-  * `status_code [2:0]`: `3'b000` = `OK_RESTED`, `3'b001` = `OK_MATCHED`, `3'b010` = `OK_CANCELED`, `3'b011` = `ERR_OUT_OF_RANGE`, `3'b100` = `ERR_POOL_FULL`, `3'b101` = `ERR_ID_INVALID`.
+  * `status_code [2:0]`: Khai báo đầy đủ 8 trạng thái kỹ thuật:
+    * `3'b000` = `OK_RESTED`: Thêm lệnh chờ thành công (5 chu kỳ).
+    * `3'b001` = `OK_MATCHED`: Khớp lệnh thành công không còn dư ($L(k) = 2 + 3k$ chu kỳ).
+    * `3'b010` = `OK_CANCELED`: Hủy lệnh thành công (5 chu kỳ).
+    * `3'b011` = `ERR_OUT_OF_RANGE`: Lỗi biên giá `price_idx >= 1024` (5 chu kỳ).
+    * `3'b100` = `ERR_POOL_FULL`: Hết bộ nhớ node `free_count == 0` (5 chu kỳ).
+    * `3'b101` = `ERR_ID_INVALID`: Lỗi ID trùng lặp hoặc không tồn tại (5 chu kỳ).
+    * `3'b110` = `OK_MATCHED_KMAX`: Khớp chạm trần $K_{\text{MAX}} = 16$, phần dư tự động hủy để chống crossed book (đúng 50 chu kỳ).
+    * `3'b111` = `OK_PARTIAL_RESTED`: Khớp $k \le 15$ lệnh và phần dư nạp vào nằm sổ thành công ($L_{\text{res}}(k) = 5 + 3k$ chu kỳ).
   * `match_count [4:0]`: Số lượng lệnh đối ứng đã khớp ($0 \le k \le 16$, 5 bit).
   * `exec_price [9:0]`: Mức giá khớp cuối cùng của giao dịch (10 bit).
   * `exec_qty [15:0]`: Tổng khối lượng cổ phiếu/hợp đồng đã khớp thành công (16 bit).
@@ -183,7 +199,7 @@ Hệ thống bao gồm 5 module SystemVerilog phân cấp rõ ràng:
   * `best_ask [9:0]`: Mức giá bán tốt nhất sau giao dịch (10 bit).
   * `best_bid_valid [0:0]`: Cờ báo phía Bid có thanh khoản hợp lệ (`1'b1`) hay đang trống (`1'b0`) (1 bit).
   * `best_ask_valid [0:0]`: Cờ báo phía Ask có thanh khoản hợp lệ (`1'b1`) hay đang trống (`1'b0`) (1 bit).
-  * `cycles_taken [7:0]`: Số chu kỳ xung nhịp thực tế phần cứng đã tiêu tốn cho giao dịch (8 bit).
+  * `cycles_taken [7:0]`: Số chu kỳ xung nhịp thực tế phần cứng đã tiêu tốn cho giao dịch (8 bit, giá trị cực đại $\le 50$).
   * **Tổng kiểm tra bit:** $3 + 5 + 10 + 16 + 10 + 10 + 1 + 1 + 8 = \mathbf{64\text{ bit}}$ (khớp tuyệt đối độ rộng bus).
 
 ### 1.6.3. Cơ chế loại trừ xung đột RAW và Bảng chu kỳ FSM chi tiết
@@ -193,15 +209,17 @@ Hệ thống bao gồm 5 module SystemVerilog phân cấp rõ ràng:
 
 | Kịch bản giao dịch | Trạng thái FSM đi qua | Phân bổ chu kỳ cụ thể | Tổng chu kỳ ($L$) |
 |---|---|---|---|
-| **Lệnh chờ (`Insert` không khớp)** | `IDLE` $\rightarrow$ `LOOKUP` $\rightarrow$ `EXEC_LINK` $\rightarrow$ `COMMIT` $\rightarrow$ `RESP` | 1 chu kỳ nhận lệnh & FFS; 1 chu kỳ đọc `head/tail` mức giá; 1 chu kỳ lấy node từ `free_list` & ghi BRAM; 1 chu kỳ cập nhật Bitmap & tail; 1 chu kỳ xuất `resp_valid`. | **Cố định 5 chu kỳ (25 ns)** |
-| **Hủy lệnh (`Cancel`)** | `IDLE` $\rightarrow$ `LOOKUP` $\rightarrow$ `EXEC_LINK` $\rightarrow$ `COMMIT` $\rightarrow$ `RESP` | 1 chu kỳ đọc `order_id_lut`; 1 chu kỳ đọc node; 1 chu kỳ gỡ node khỏi chuỗi liên kết; 1 chu kỳ thu hồi node vào `free_list` & cập nhật Bitmap nếu hết mức; 1 chu kỳ xuất `resp_valid`. | **Cố định 5 chu kỳ (25 ns)** |
-| **Từ chối lỗi biên (`ERR_*`)** | `IDLE` $\rightarrow$ `CHECK` $\rightarrow$ `HOLD` $\rightarrow$ `COMMIT` $\rightarrow$ `RESP` | Phát hiện lỗi ở chu kỳ 1 (`ERR_OUT_OF_RANGE`) hoặc chu kỳ 2 (`ERR_ID_INVALID`, `ERR_POOL_FULL`); FSM đệm trạng thái qua các chu kỳ chuẩn bị để xuất `resp_valid` tại đúng chu kỳ thứ 5. | **Cố định 5 chu kỳ (25 ns)** |
-| **Khớp $k$ lệnh đối ứng ($k \ge 1$)** | `IDLE` $\rightarrow$ `LOOKUP` $\rightarrow$ [$k \times$ `MATCH_SWEEP`] $\rightarrow$ `COMMIT` $\rightarrow$ `RESP` | 2 chu kỳ khởi tạo tra cứu FFS & mức giá đầu; mỗi lệnh đối ứng quét mất **đúng 3 chu kỳ** (đọc node, trừ khối lượng, giải phóng node); 2 chu kỳ hoàn tất cập nhật Bitmap và xuất `resp_valid`. | $L(k) = 5 + 3(k - 1)$ chu kỳ |
+| **Lệnh chờ (`Insert` không khớp)** | `S_IDLE` $\rightarrow$ `S_LOOKUP` $\rightarrow$ `S_EXEC_LINK` (2 ck) $\rightarrow$ `S_COMMIT` | 1 chu kỳ nhận lệnh & FFS; 1 chu kỳ đọc `price_level_table`; 1 chu kỳ lấy node từ `free_list` & ghi BRAM; 1 chu kỳ cập nhật liên kết tail bằng byte-write enable & Bitmap; 1 chu kỳ xuất `resp_valid`. | **Cố định 5 chu kỳ (25 ns)** |
+| **Hủy lệnh (`Cancel`)** | `S_IDLE` $\rightarrow$ `S_LOOKUP` $\rightarrow$ `S_EXEC_LINK` (2 ck) $\rightarrow$ `S_COMMIT` | 1 chu kỳ đọc `order_id_lut`; 1 chu kỳ đọc node; 1 chu kỳ sửa `next/prev` node lân cận bằng byte-write enable; 1 chu kỳ thu hồi node vào `free_list` & cập nhật Bitmap; 1 chu kỳ xuất `resp_valid`. | **Cố định 5 chu kỳ (25 ns)** |
+| **Từ chối lỗi biên (`ERR_*`)** | `S_IDLE` $\rightarrow$ `S_LOOKUP` $\rightarrow$ `S_ERROR_HOLD` (2 ck) $\rightarrow$ `S_COMMIT` | Phát hiện lỗi ở chu kỳ 1 (`ERR_OUT_OF_RANGE`) hoặc chu kỳ 2 (`ERR_ID_INVALID`, `ERR_POOL_FULL`); FSM đệm trạng thái qua `S_ERROR_HOLD` để xuất `resp_valid` tại đúng chu kỳ thứ 5. | **Cố định 5 chu kỳ (25 ns)** |
+| **Khớp hết ($1 \le k \le 16$, không dư)** | `S_IDLE` $\rightarrow$ `S_LOOKUP` $\rightarrow$ [$k \times$ `S_MATCH_SWEEP`] | 2 chu kỳ khởi tạo (FFS & đọc mức giá đầu); $k$ lệnh đối ứng quét tại `S_MATCH_SWEEP` mất đúng $k \times 3$ chu kỳ (đọc node, trừ khối lượng, giải phóng node & commit); xuất `resp_valid` ngay tại chu kỳ cuối. | $L(k) = 2 + 3k = 5 + 3(k - 1)$ chu kỳ |
+| **Khớp chạm trần $K_{\text{MAX}} = 16$ (hủy dư)** | `S_IDLE` $\rightarrow$ `S_LOOKUP` $\rightarrow$ [$16 \times$ `S_MATCH_SWEEP`] | Khớp đủ 16 lệnh mất $2 + 3 \times 16 = 50$ chu kỳ; phần dư tự động hủy (tránh crossed book), xuất `resp_valid` kèm mã `OK_MATCHED_KMAX`. | $L(16) = \mathbf{50\text{ chu kỳ}} = \mathbf{250\text{ ns}}$ |
+| **Khớp một phần ($k \le 15$) + Phần dư nằm sổ** | `S_IDLE` $\rightarrow$ `S_LOOKUP` $\rightarrow$ [$k \times$ `S_MATCH_SWEEP`] $\rightarrow$ `S_EXEC_LINK` (2 ck) $\rightarrow$ `S_COMMIT` | $2 + 3k$ chu kỳ quét $k$ lệnh đối ứng; thêm 3 chu kỳ cấp phát node và móc phần dư vào đuôi mức giá ($L_{\text{res}}(k) = (2+3k) + 3$). | $L_{\text{res}}(k) = 5 + 3k$ chu kỳ (tối đa 50 chu kỳ tại $k=15$) |
 
-* **Xử lý 3 ca biên trong vòng lặp khớp lệnh:**
-  1. *Ca quét sang mức giá mới:* Khi lệnh đối ứng hiện tại làm cạn mức giá, cây Bitmap FFS 2 tầng giải mã mức giá tốt nhất kế tiếp trong đúng 1 chu kỳ tổ hợp; FSM chuyển thẳng sang đọc node đầu của mức mới mà không làm phát sinh chu kỳ phạt.
-  2. *Ca khớp một phần lệnh đối ứng cuối (Partial Fill):* FSM chỉ cập nhật trường `qty` của node đó trên BRAM, không giải phóng node vào `free_list`, hoàn tất giao dịch trong đúng $L(k)$ chu kỳ.
-  3. *Ca khớp hết $k$ lệnh và phần dư vào nằm sổ (Residual Rested):* Sau khi quét $k$ lệnh, phần dư cần nạp vào sổ được FSM cấp phát node từ `free_list` và móc vào đuôi mức giá trong đúng 3 chu kỳ bổ sung ($L_{\text{res}}(k) = 5 + 3k$ chu kỳ), vẫn là một hàm tất định hoàn toàn.
+* **Xử lý các cơ chế vi kiến trúc phần cứng đặc biệt:**
+  1. *Cơ chế đọc trước (Prefetching) mức giá kế tiếp:* Khi lệnh đối ứng cuối cùng tại mức giá hiện tại được xử lý, mạch tổ hợp FFS tính toán trước mức giá tốt nhất kế tiếp bằng cách che bit của mức giá hiện tại (`bitmap & ~mask`). Địa chỉ này được phát trước sang cổng đọc thứ hai của `price_level_table` ngay trong chu kỳ commit của lệnh cũ, do đó `head_ptr` của mức giá mới đã sẵn sàng ở đầu ra BRAM ở chu kỳ tiếp theo mà không làm phát sinh chu kỳ phạt.
+  2. *Cơ chế ghi một trường (Byte-Write Enable):* BRAM của `order_node_pool` hỗ trợ tín hiệu byte-write enable `we [7:0]` trên 64 bit. Khi cập nhật `prev_ptr` hoặc `next_ptr` của các node lân cận trong thao tác `Insert` và `Cancel`, FSM ghi trực tiếp vào trường con trỏ 16-bit mà không cần chu kỳ đọc trước toàn bộ 64-bit của node lân cận (loại bỏ hoàn toàn Read-Modify-Write cycle).
+  3. *Cơ chế chạm trần $K_{\text{MAX}} = 16$ & Triệt tiêu Crossed Book:* Nếu sau khi quét đủ $K_{\text{MAX}} = 16$ lệnh đối ứng mà lệnh vẫn còn khối lượng dư (`rem_qty > 0`), phần cứng **tự động hủy phần dư còn lại** và trả về mã `OK_MATCHED_KMAX`. Quy tắc này đảm bảo hai mục tiêu tối thượng: (1) Ngăn ngừa hiện tượng sổ lệnh bị chéo giá (crossed book, khi giá mua $\ge$ giá bán mà không được khớp tiếp) và (2) Khóa cứng cận trên thời gian thực thi xấu nhất $\text{WCET} = \max(L(16), L_{\text{res}}(15)) = \mathbf{50\text{ chu kỳ}} = \mathbf{250\text{ ns}}$.
 
 ### 1.6.4. Xử lý tất định các điều kiện biên
 
@@ -217,16 +235,20 @@ Hệ thống bao gồm 5 module SystemVerilog phân cấp rõ ràng:
 
 Mô hình `LobGoldenModel` viết bằng C++17 sử dụng đúng cấu trúc mảng tĩnh phản chiếu 1:1 phần cứng. Qua cầu nối **SystemVerilog DPI-C**, Testbench trên Vivado XSim bơm đồng thời các giao dịch ngẫu nhiên vào cả RTL và C++ Golden Model:
 * Scoreboard tự động so sánh từng bit của `status_code`, `match_count`, `exec_price`, `exec_qty`, `best_bid`, `best_ask` sau mỗi lệnh.
-* **So khớp độ trễ lý thuyết tự động:** Mô hình C++ tính trước số chu kỳ lý thuyết $L(k)$; Scoreboard so sánh trực tiếp giá trị này với `cycles_taken` do RTL đo được. Bất kỳ sai lệch nào về độ trễ đều kích hoạt cờ lỗi mô phỏng ngay lập tức.
+* **So khớp độ trễ lý thuyết với bộ đếm độc lập trong Testbench:** Không chỉ dựa vào `cycles_taken` do RTL tự báo cáo, Testbench SystemVerilog duy trì một bộ đếm chu kỳ độc lập (`tb_cycle_cnt`) tính từ lúc bắt tay `cmd_valid && cmd_ready` đến khi `resp_valid == 1`. Scoreboard đối chiếu đồng thời cả `tb_cycle_cnt` và `cycles_taken` với giá trị lý thuyết $L(k)$ hoặc $L_{\text{res}}(k)$ do `LobGoldenModel` tính trước. Bất kỳ sai lệch nào về độ trễ đều kích hoạt cờ lỗi mô phỏng ngay lập tức.
+* **Kiểm tra toàn diện trạng thái sổ (Full BRAM State Dump):** Cuối mỗi kịch bản thử nghiệm (và định kỳ sau mỗi 1.000 lệnh), Testbench kích hoạt cơ chế đọc quét toàn bộ nội dung BRAM của `price_level_table` và `order_node_pool` để so sánh bit-exact với mảng trạng thái nội bộ của `LobGoldenModel`. Cơ chế này bảo đảm phát hiện mọi lỗi sai lệch tiềm ẩn ở các mức giá sâu (nằm ngoài Top-of-Book).
+* **Độ bao phủ chức năng (Functional Coverage Points):** Xây dựng các covergroup trong SystemVerilog với các coverpoint kiểm tra:
+  * Toàn bộ các giá trị số lệnh khớp $k \in \{0, 1, 2, \dots, 16\}$.
+  * Các trạng thái biên: `pool_full` (`free_count == 0`), `order_id` trùng lặp / không tồn tại, `price_idx >= 1024`.
+  * Các kịch bản luồng phức tạp: khớp một phần lệnh chờ cuối (partial fill), phần dư nạp vào nằm sổ (residual rested), quét qua nhiều mức giá (price sweep cross-level), và chạm trần $K_{\text{MAX}} = 16$ kích hoạt hủy phần dư (`OK_MATCHED_KMAX`).
 
 ### 1.7.2. Kiểm chứng hình thức (Formal Verification) với SymbiYosys
 
-Nhằm bảo đảm thiết kế đúng đắn toán học trên mọi không gian trạng thái, đề tài áp dụng công cụ mã nguồn mở SymbiYosys (kết hợp bộ giải SMT Bitwuzla / Z3):
-* **Cam kết mức tối thiểu (Bounded Model Checking — BMC):** Module RTL được tham số hóa trên cấu hình thu nhỏ (`NUM_PRICES = 8`, `MAX_ORDERS = 16`). Chạy kiểm chứng BMC với độ sâu $k = 20 - 30$ bước chứng minh 3 bất biến cốt lõi:
-  1. *Bảo toàn tài nguyên bộ nhớ:* `active_nodes + free_list_count == MAX_ORDERS` ở mọi chu kỳ.
-  2. *Bảo toàn thứ tự FIFO:* Lệnh vào trước tại cùng một mức giá luôn nằm trước trong chuỗi liên kết.
-  3. *Cận trên độ trễ:* Độ trễ từ khi bắt tay lệnh đến khi có kết quả luôn tuân theo hàm tất định $L(0) = 5$ hoặc $L(k) = 5 + 3(k-1)$.
-* **Mức hoàn thiện mở rộng (Quy nạp toán học $k$-induction):** Chạy `mode prove` để chứng minh bất biến trên độ sâu vô hạn.
+Nhằm bảo đảm thiết kế đúng đắn toán học, đề tài áp dụng công cụ mã nguồn mở SymbiYosys (kết hợp bộ giải SMT Bitwuzla / Z3):
+* **Cam kết mức tối thiểu (Bounded Model Checking — BMC):** Module RTL được tham số hóa trên cấu hình vi mô (`NUM_PRICES = 4`, `MAX_ORDERS = 4`, `K_MAX = 2`). Chạy kiểm chứng BMC với độ sâu $d = 40 - 60$ chu kỳ chứng minh bất biến bảo toàn tài nguyên bộ nhớ:
+  $$\text{active\_nodes} + \text{free\_list\_count} == \text{MAX\_ORDERS}$$
+  đúng với mọi chuỗi lệnh hợp lệ trong $d$ chu kỳ đầu tiên kể từ trạng thái reset. Với cấu hình $4 \times 4$, độ sâu $d = 40 - 60$ chu kỳ hoàn toàn đủ để kích hoạt đầy đủ các chuỗi thao tác lấp đầy kho node (4 lệnh Insert liên tiếp = 20 chu kỳ) và quét chạm trần $K_{\text{MAX}} = 2$ (8 chu kỳ). Đồng thời, các thuộc tính `cover()` được tích hợp để chứng minh trạng thái `pool_full` và trạng thái chạm `K_MAX = 2` là hoàn toàn đạt tới được (reachability proof).
+* **Mức hoàn thiện mở rộng (Quy nạp toán học $k$-induction):** Chạy `mode prove` để chứng minh bất biến trên độ sâu vô hạn. Đề tài nhận diện trước rủi ro quy nạp trên danh sách liên kết kép có thể khó hội tụ nếu thiếu vị từ phụ (auxiliary invariants); khi đó cam kết tối thiểu bằng BMC độ sâu cố định ($d = 40 - 60$) là phương án nghiệm thu chắc chắn.
 
 ### 1.7.3. Đo đạc thực nghiệm trên phần cứng AMD Kria KV260
 
@@ -242,9 +264,9 @@ Nhằm bảo đảm thiết kế đúng đắn toán học trên mọi không gi
 
 | Hạng mục | Mức Tối Thiểu (Cam kết bắt buộc để nghiệm thu ĐA1) | Mức Hoàn Thiện Mở Rộng (Điểm cộng / Bước đệm sang ĐA2) |
 | --- | --- | --- |
-| **1. Mô hình chuẩn C++** | Hoàn thiện `LobGoldenModel` C++17 (1.024 mức giá, 4.096 lệnh, mảng tĩnh), vượt qua 100% unit tests chức năng và tích hợp hàm dự đoán chu kỳ $L(k)$. | Đo kiểm phân bố độ trễ C++ (p50, p99, p99.9) trên kịch bản 1 triệu lệnh trên Linux để đối chiếu trực quan với FPGA. |
-| **2. Thiết kế RTL** | Hoàn thiện 5 module SystemVerilog hỗ trợ đầy đủ `ACT_NEW` (chờ & khớp $K_{\text{MAX}} = 16$), `ACT_CANCEL`, và bắt lỗi biên tất định. | Tham số hóa hoàn toàn (`NUM_PRICES`, `MAX_ORDERS`, `K_MAX`) để tái sử dụng linh hoạt. |
-| **3. Kiểm chứng mô phỏng & Formal** | (1) Testbench DPI-C trên Vivado XSim chạy tự động $\ge 50.000$ lệnh đạt **100% pass (zero mismatch về trạng thái và độ trễ)**.<br>(2) Kiểm chứng hình thức **SymbiYosys BMC** chứng minh bất biến bảo toàn bộ nhớ trên cấu hình $8 \times 16$. | Chạy thành công quy nạp toán học **$k$-induction (`mode prove`)** trên cấu hình thu nhỏ chứng minh bất biến ở độ sâu vô hạn. |
+| **1. Mô hình chuẩn C++ & Giải tích** | (1) Hoàn thiện `LobGoldenModel` C++17 (1.024 mức giá, 4.096 lệnh, mảng tĩnh), vượt qua 100% unit tests chức năng và tích hợp hàm dự đoán chu kỳ $L(k)$.<br>(2) Xây dựng mô hình giải tích định lượng so sánh kiến trúc Direct-Indexed ($O(1)$) vs Binary Heap ($O(\log_2 M)$) và Top-K Cache. | Đo kiểm phân bố độ trễ C++ (p50, p99, p99.9) trên kịch bản 1 triệu lệnh trên Linux để đối chiếu trực quan với FPGA. |
+| **2. Thiết kế RTL** | Hoàn thiện 5 module SystemVerilog hỗ trợ đầy đủ `ACT_NEW` (chờ & khớp $K_{\text{MAX}} = 16$), `ACT_CANCEL`, Byte-Write Enable và bắt lỗi biên tất định. | Tham số hóa hoàn toàn (`NUM_PRICES`, `MAX_ORDERS`, `K_MAX`) để tái sử dụng linh hoạt. |
+| **3. Kiểm chứng mô phỏng & Formal** | (1) Testbench DPI-C trên Vivado XSim chạy tự động $\ge 50.000$ lệnh đạt **100% pass (zero mismatch về trạng thái và độ trễ theo bộ đếm độc lập; full BRAM dump)**.<br>(2) Kiểm chứng hình thức **SymbiYosys BMC** ($4 \times 4$, $K_{\text{MAX}} = 2$, độ sâu $d = 40 - 60$ chu kỳ) chứng minh bất biến bảo toàn node với mọi chuỗi lệnh từ reset kèm cover properties. | Chạy thành công quy nạp toán học **$k$-induction (`mode prove`)** trên cấu hình thu nhỏ chứng minh bất biến ở độ sâu vô hạn; chứng minh hình thức thứ tự FIFO. |
 | **4. Tổng hợp phần cứng (Vivado)** | Synthesis & Implementation thành công trên target `xck26-sfvc784-2LV-c` ở xung nhịp **$200\text{ MHz}$ với $\text{WNS} \ge 0\text{ ns}$**, xuất báo cáo PPA thực tế (LUT/FF/BRAM). | Đóng gói IP AXI4-Lite, nạp bitstream lên board **Kria KV260 thật**, chụp sóng ILA và trích xuất bảng đo chu kỳ thực tế. |
 
 ---
@@ -258,19 +280,19 @@ Nhằm bảo đảm thiết kế đúng đắn toán học trên mọi không gi
 
 | Giai đoạn | Mốc Tuần | Nội dung công việc chi tiết | Sản phẩm bàn giao (Deliverables) |
 | --- | :---: | --- | --- |
-| **GĐ 1: Thiết kế RTL 3 Module Lưu trữ & Synthesis sớm** | **Tuần 11 – 12** *(Hiện tại)* | Viết RTL cho 3 module dữ liệu: `ffs_bitmap_tree.sv` (cây FFS 2 tầng), `price_level_table.sv` (BRAM 1.024 mức), `order_node_pool.sv` (4.096 nodes + Free-List + Order ID LUT). **Chạy synthesis sớm trên Vivado ở Tuần 12** để kiểm tra suy luận BRAM. | Mã nguồn RTL 3 module; waveform testbench đơn vị; báo cáo synthesis sơ bộ. |
-| **GĐ 2: FSM Điều khiển & Tích hợp Top** | **Tuần 13 – 14** | Hiện thực hóa `lob_ctrl_fsm.sv` (5 trạng thái điều phối BRAM, loại trừ xung đột RAW, chặn trần $K_{\text{MAX}} = 16$) và `lob_top.sv` (top wrapper, bắt tay `valid`/`ready`, bộ đếm `cycles_taken`). Xử lý đầy đủ các ca lỗi biên. | Module `lob_top.sv` tích hợp hoàn chỉnh; waveform mô phỏng các ca lệnh cơ bản (thêm, hủy, khớp). |
-| **GĐ 3: Đồng mô phỏng DPI-C & Stress Test** | **Tuần 15 – 16** | Xây dựng testbench DPI-C kết nối RTL với `LobGoldenModel` trên Vivado XSim; chạy kiểm thử tự động $\ge 50.000$ giao dịch ngẫu nhiên, tự động so khớp trạng thái và chu kỳ $L(k)$, sửa sạch lỗi góc (zero mismatch). | Báo cáo log mô phỏng 50.000+ lệnh đạt 100% bit-exact và chu kỳ; kịch bản testbench tự động. |
-| **GĐ 4: Kiểm chứng hình thức BMC & Đóng thời gian Vivado** | **Tuần 17 – 18** | (1) Chạy SymbiYosys BMC trên cấu hình $8 \times 16$ chứng minh bất biến bảo toàn node.<br>(2) Chạy Implementation trên Vivado cho chip `xck26-sfvc784-2LV-c`; tối ưu đường găng đạt $\text{WNS} \ge 0\text{ ns}$ tại $200\text{ MHz}$; trích xuất báo cáo PPA thực tế. | File `.sby` + log chứng minh BMC; Báo cáo Utilization (LUT/FF/BRAM) và Timing Summary ($\text{WNS} \ge 0$). |
+| **GĐ 1: Thiết kế RTL 3 Module Lưu trữ & Synthesis sớm** | **Tuần 11 – 12** *(Hiện tại)* | Viết RTL cho 3 module dữ liệu: `ffs_bitmap_tree.sv` (cây FFS 2 tầng), `price_level_table.sv` (BRAM 1.024 mức), `order_node_pool.sv` (4.096 nodes + Byte-Write Enable + Free-List + Order ID LUT). **Chạy synthesis sớm trên Vivado ở Tuần 12** để kiểm tra suy luận BRAM. | Mã nguồn RTL 3 module; waveform testbench đơn vị; báo cáo synthesis sơ bộ. |
+| **GĐ 2: FSM Điều khiển & Tích hợp Top** | **Tuần 13 – 14** | Hiện thực hóa `lob_ctrl_fsm.sv` (6 trạng thái điều phối BRAM, loại trừ xung đột RAW, chặn trần $K_{\text{MAX}} = 16$) và `lob_top.sv` (top wrapper, bắt tay `valid`/`ready`, bộ đếm `cycles_taken`). Xử lý đầy đủ các ca lỗi biên và hủy phần dư. | Module `lob_top.sv` tích hợp hoàn chỉnh; waveform mô phỏng các ca lệnh cơ bản (thêm, hủy, khớp). |
+| **GĐ 3: Đồng mô phỏng DPI-C & Stress Test** | **Tuần 15 – 16** | Xây dựng testbench DPI-C kết nối RTL với `LobGoldenModel` trên Vivado XSim; chạy kiểm thử tự động $\ge 50.000$ giao dịch ngẫu nhiên, tự động so khớp trạng thái và chu kỳ $L(k)$ qua bộ đếm độc lập, quét full BRAM dump, sửa sạch lỗi góc (zero mismatch). | Báo cáo log mô phỏng 50.000+ lệnh đạt 100% bit-exact và chu kỳ; kịch bản testbench tự động. |
+| **GĐ 4: Kiểm chứng hình thức BMC & Đóng thời gian Vivado** | **Tuần 17 – 18** | (1) Chạy SymbiYosys BMC trên cấu hình $4 \times 4$ ($K_{\text{MAX}} = 2$, độ sâu $d = 40 - 60$ chu kỳ) chứng minh bất biến bảo toàn node kèm cover properties.<br>(2) Chạy Implementation trên Vivado cho chip `xck26-sfvc784-2LV-c`; tối ưu đường găng đạt $\text{WNS} \ge 0\text{ ns}$ tại $200\text{ MHz}$; trích xuất báo cáo PPA thực tế. | File `.sby` + log chứng minh BMC; Báo cáo Utilization (LUT/FF/BRAM) và Timing Summary ($\text{WNS} \ge 0$). |
 | **GĐ 5: Mở rộng Formal k-induction / Đo đạc board KV260** | **Tuần 19** | *Mức hoàn thiện mở rộng:* Chạy quy nạp $k$-induction trên SymbiYosys; đóng gói IP AXI4-Lite nạp lên board Kria KV260 thật, kích hoạt burst và chụp sóng ILA. | Log quy nạp toán học / Ảnh chụp dạng sóng ILA thực tế trên phần cứng. |
-| **GĐ 6: Hoàn thiện Báo cáo, Slide & Nộp bài** | **Tuần 20** | Tổng hợp toàn bộ số liệu PPA và đo đạc, viết hoàn chỉnh quyển thuyết minh Đồ án 1 theo chuẩn học thuật ĐHBK Hà Nội, chuẩn bị slide và demo bảo vệ trước hội đồng. | **Quyển báo cáo Đồ án 1 hoàn chỉnh**, slide bảo vệ, repo mã nguồn mở GitHub. |
+| **GĐ 6: Hoàn thiện Báo cáo, Slide & Nộp bài** | **Tuần 20** | Hoàn thiện mô hình giải tích định lượng đối chiếu cấu trúc dữ liệu; tổng hợp toàn bộ số liệu PPA và đo đạc, viết hoàn chỉnh quyển thuyết minh Đồ án 1 theo chuẩn học thuật ĐHBK Hà Nội, chuẩn bị slide và demo bảo vệ trước hội đồng. | **Quyển báo cáo Đồ án 1 hoàn chỉnh**, mô hình giải tích cấu trúc dữ liệu, slide bảo vệ, repo mã nguồn mở GitHub. |
 
 ### 1.9.2. Ma trận rủi ro kỹ thuật và Phương án dự phòng (Mitigation Plan)
 
 | Rủi ro kỹ thuật | Mức độ | Nguyên nhân tiềm ẩn | Phương án xử lý / Dự phòng |
 | --- | --- | --- | --- |
 | **Vi phạm thời gian (WNS < 0) ở 200 MHz** | Trung bình | Đường tổ hợp giải mã Bitmap 1.024-bit nối tiếp ngay với địa chỉ đọc BRAM trong cùng 1 chu kỳ quá dài. | Chèn 1 tầng thanh ghi pipeline giữa bước FFS và bước đọc BRAM (tăng độ trễ cố định từ 5 lên 6 chu kỳ = 30 ns nhưng bảo đảm đóng thời gian dễ dàng). |
-| **Quy nạp k-induction không hội tụ** | Trung bình | Cấu trúc danh sách liên kết kép (con trỏ hai chiều) có không gian trạng thái lớn, bộ giải SMT dễ bị bùng nổ tổ hợp nếu thiếu vị từ phụ. | Áp dụng phương án dự phòng đã cam kết ở Mức Tối Thiểu: Sử dụng Bounded Model Checking (BMC) với độ sâu cố định ($k = 20 - 30$ bước) để bảo đảm nghiệm thu đúng hạn. |
+| **Quy nạp k-induction không hội tụ** | Trung bình | Cấu trúc danh sách liên kết kép (con trỏ hai chiều) có không gian trạng thái lớn, bộ giải SMT dễ bị bùng nổ tổ hợp nếu thiếu vị từ phụ. | Áp dụng phương án dự phòng đã cam kết ở Mức Tối Thiểu: Sử dụng Bounded Model Checking (BMC) với độ sâu cố định ($d = 40 - 60$ chu kỳ kèm cover properties) để bảo đảm nghiệm thu đúng hạn. |
 | **Suy luận nhầm BRAM thành LUTRAM** | Thấp | Cú pháp mảng SystemVerilog không đúng mẫu đồng bộ của Vivado, làm tiêu tốn LUT logic. | Chạy synthesis kiểm tra ngay từ Tuần 12; áp dụng thuộc tính `(* ram_style = "block" *)` tường minh theo đúng chuẩn Xilinx UltraScale+. |
 | **Chậm tiến độ ghép nối board KV260 thật** | Trung bình | Tốn thời gian cấu hình hệ điều hành Linux / Device Tree trên lõi ARM PS. | Toàn bộ tiêu chí nghiệm thu bắt buộc (Mức Tối Thiểu) được bảo đảm bằng Post-Implementation Timing Simulation và BMC trên Vivado; phần board thật chỉ triển khai ở Tuần 19 nếu các bước trước hoàn thành sớm. |
 
@@ -279,13 +301,17 @@ Nhằm bảo đảm thiết kế đúng đắn toán học trên mọi không gi
 ## 1.10. Phản biện các luận điểm đối lập
 
 * **Phản biện 1: "Tinh chỉnh hệ điều hành thời gian thực (RT-Linux, `isolcpus`, tắt SMT/DVFS, `nohz_full`) đã đủ để khử hoàn toàn nhiễu trên CPU."**
-  *Trả lời:* Đúng với nhiễu tầng hệ điều hành, nhưng không đúng với nhiễu tầng vi kiến trúc phần cứng. Ngay cả khi một nhân CPU được cô lập hoàn toàn, cấu trúc bộ suy đoán nhánh, bộ nạp trước phần cứng (hardware prefetcher) và cơ chế phân xử bus bộ nhớ dùng chung vẫn khiến thời gian thực thi biến thiên theo dữ liệu thị trường [6], [7]. Phần mềm tối ưu có thể giảm xác suất xuất hiện đuôi độ trễ, nhưng chỉ mạch số đồng bộ trên SRAM tĩnh mới cung cấp được **cận trên độ trễ xác định theo công thức toán học đóng ($L(k) = 5 + 3(k-1)$ chu kỳ, $\text{WCET} \le 50\text{ chu kỳ} = 250\text{ ns}$)**.
+  *Trả lời:* Đúng với nhiễu tầng hệ điều hành, nhưng không đúng với nhiễu tầng vi kiến trúc phần cứng. Ngay cả khi một nhân CPU được cô lập hoàn toàn, cấu trúc bộ suy đoán nhánh, bộ nạp trước phần cứng (hardware prefetcher) và cơ chế phân xử bus bộ nhớ dùng chung vẫn khiến thời gian thực thi biến thiên theo dữ liệu thị trường [6], [7]. Phần mềm tối ưu có thể giảm xác suất xuất hiện đuôi độ trễ, nhưng chỉ mạch số đồng bộ trên SRAM tĩnh mới cung cấp được **cận trên độ trễ xác định theo công thức toán học đóng ($L(k) = 2 + 3k = 5 + 3(k-1)$ chu kỳ, $\text{WCET} \le 50\text{ chu kỳ} = 250\text{ ns}$)**.
 * **Phản biện 2: "Với dung lượng 66–96 KB nằm gọn trong L2 cache riêng của CPU, truy vết con trỏ trên CPU cũng chỉ mất ~15–25 ns, ngang bằng 25 ns của FPGA."**
   *Trả lời:* Hoàn toàn chính xác khi xét một nhân CPU được ghim độc quyền chỉ chạy độc lập vòng lặp sổ lệnh trong môi trường thử nghiệm. Đề tài thừa nhận ở cấu hình dữ liệu này, CPU đạt độ trễ trung bình rất tốt (~20–50 ns). Giá trị vượt trội của phần cứng FPGA nằm ở hai yếu tố quyết định:
   1. **Tính tất định tuyệt đối:** FPGA cam kết cận trên WCET toán học 250 ns trong mọi điều kiện, triệt tiêu 100% nguy cơ biến thiên vi kiến trúc.
-  2. **Khả năng ghép nối I/O trực tiếp (ĐA2):** Lõi sổ lệnh trên FPGA sẵn sàng nhận luồng dữ liệu trực tiếp từ khối giải mã mạng 10GbE qua bus AXI4-Stream, loại bỏ hoàn toàn độ trễ $1 - 3\ \mu\text{s}$ trung chuyển qua bus PCIe và bộ đệm DRAM của CPU máy chủ.
+  2. **Khả năng ghép nối I/O trực tiếp (ĐA2):** Lõi sổ lệnh trên FPGA sẵn sàng nhận luồng dữ liệu trực tiếp từ khối giải mã mạng 10GbE qua bus AXI4-Stream, loại bỏ hoàn toàn độ trễ $800\text{ ns} - 2\ \mu\text{s}$ trung chuyển qua bus PCIe và bộ đệm DRAM của CPU máy chủ.
 * **Phản biện 3: "Dải giá 1.024 ticks và 4.096 lệnh trên KV260 là nhỏ so với sàn giao dịch thực tế."**
-  *Trả lời:* Đây là sự đánh đổi có chủ đích phù hợp với tài nguyên của kit sinh viên Kria KV260 (~250 USD) trong phạm vi Đồ án 1. Với các công cụ tài chính giao dịch quanh một biên độ giá trong ngày (intraday active price window), cửa sổ 1.024 bước giá quanh giá tham chiếu bao phủ hoàn toàn vùng thanh khoản hoạt động mạnh nhất, đồng thời kiến trúc module hóa cho phép mở rộng lên UltraRAM (64 khối $\times$ 288 Kb = 2,25 MB trên K26) ở Đồ án 2 và ĐATN.
+  *Trả lời:* Luận điểm này chưa tính đến quy định vận hành thực tế của các sàn giao dịch chứng khoán. Lấy ví dụ Sở Giao dịch Chứng khoán TP. Hồ Chí Minh (HOSE), biên độ dao động giá trong ngày được quy định chặt chẽ ở mức $\pm 7\%$ so với giá tham chiếu, tức tổng dải biên độ trần – sàn trong một phiên là $\Delta P = 14\% \times P_{\text{ref}}$. Đồng thời, quy chế HOSE áp dụng 3 khung bước giá (tick size):
+  * Giá $< 10.000$ đồng: Bước giá 10 đồng $\implies$ Dải trần–sàn tối đa $\frac{14\% \times 10.000}{10} = \mathbf{140}$ bước giá.
+  * Giá $10.000 - 49.950$ đồng: Bước giá 50 đồng $\implies$ Dải trần–sàn tối đa $\frac{14\% \times 50.000}{50} = \mathbf{140}$ bước giá.
+  * Giá $\ge 50.000$ đồng: Bước giá 100 đồng $\implies$ Số bước giá trần–sàn nằm gọn trong $1.024$ ticks khi thị giá thỏa mãn $\frac{14\% \times P}{100} \le 1.024 \iff P \le \mathbf{731.428}$ đồng.
+  Trên thực tế thị trường chứng khoán Việt Nam, 100% các cổ phiếu niêm yết đều có thị giá dưới $700.000$ đồng (ngay cả các mã có thị giá cao nhất lịch sử như VCF, WCS cũng chỉ dao động quanh $150.000 - 300.000$ đồng). Do đó, **cửa sổ 1.024 bước giá của kiến trúc Direct-Indexed hoàn toàn bao phủ 100% biên độ trần – sàn hợp lệ trong toàn bộ một ngày giao dịch của bất kỳ mã chứng khoán nào trên sàn HOSE**, chứ không chỉ là "vùng thanh khoản hoạt động mạnh nhất". Đây là sự lựa chọn kiến trúc tối ưu tuyệt đối về mặt kỹ thuật: vừa phủ trọn vẹn không gian giá hợp lệ trong ngày của sàn, vừa cho phép giải mã mức giá tốt nhất trong đúng 1 chu kỳ xung nhịp và vừa khít ngân sách BRAM của chip Kria KV260.
 
 ---
 
@@ -296,14 +322,14 @@ Nhằm bảo đảm thiết kế đúng đắn toán học trên mọi không gi
 | 1 | Lý thuyết sổ lệnh giới hạn (LOB) và nguyên tắc ưu tiên giá–thời gian | [14] | M. D. Gould et al., *Quantitative Finance*, vol. 13, no. 11, 2013 |
 | 2 | Lưu lượng bản tin thị trường giờ cao điểm và chuẩn giao thức sự kiện sổ lệnh | [1], [2] | SIAC OPRA Pillar Capacity Projections (2023) & Nasdaq TotalView-ITCH 5.0 (2020) |
 | 3 | Quy định pháp lý về đồng bộ đồng hồ $\le 100\ \mu\text{s}$ cho Sàn giao dịch (EU & US) | [3], [4] | EU MiFID II RTS 25 (2017) & U.S. SEC Rule 613 / CAT NMS Plan Section 6.8 (2016) |
-| 4 | Phân tích nhiễu hệ điều hành (OS interference) trên hệ thống hiệu năng cao | [5] | P. Beckman et al., *IEEE Cluster*, 2006 & *Cluster Computing*, vol. 11, no. 1, 2008 |
+| 4 | Phân tích nhiễu hệ điều hành (OS interference) trên hệ thống hiệu năng cao | [5] | P. Beckman et al., *Cluster Computing*, vol. 11, no. 1, 2008 |
 | 5 | Thông số phân cấp bộ nhớ cache L1/L2/L3 và chi phí chu kỳ vi kiến trúc trên CPU | [6], [7] | Intel 64 Optimization Reference Manual (2023) & U. Drepper, Red Hat Tech. Rep. (2007) |
 | 6 | Thông số tài nguyên phần cứng chip Zynq UltraScale+ XCK26 (144 BRAM36K, 64 URAM) | [8] | AMD Xilinx, *Kria K26 SOM Data Sheet (DS987)*, 2022 |
 | 7 | Độ trễ đường truyền mạng phần mềm (Kernel Bypass) so với FPGA Tick-to-Trade | [9], [10] | Solarflare OpenOnload Guide (2020) & STAC-T0 Benchmark Report (2024) |
 | 8 | Các kiến trúc tăng tốc HFT và xử lý sự kiện tài chính trên FPGA giai đoạn đầu | [11]–[13] | J. W. Lockwood et al. (*HOTI* 2012), C. Leber et al. (*FPL* 2011), M. Sadoghi et al. (*PVLDB* 2010) |
-| 9 | Kiến trúc cập nhật sổ lệnh phía Trader dùng mảng bước giá + top-5 cache | [15] | C. He, H. Fu, W. Luk et al., *IEEE FPL*, 2017 |
+| 9 | Kiến trúc cập nhật sổ lệnh (Order Book Update) dùng mảng bước giá + top-5 cache | [15] | C. He, H. Fu, W. Luk et al., *IEEE FPL*, 2017 |
 | 10 | Điểm nghẽn tuần tự đơn luồng và chi phí tranh chấp khóa trong phần mềm tài chính | [16] | M. Thompson et al., *LMAX Disruptor Technical White Paper*, 2011 |
-| 11 | Khảo sát lõi khớp lệnh tài chính trên FPGA bằng High-Level Synthesis (HLS) | [17] | P. Puranik et al., *Electronics*, vol. 12, no. 14, 2023 |
+| 11 | Khảo sát lõi khớp lệnh tài chính trên FPGA bằng High-Level Synthesis (HLS) | [17] | S. Puranik et al., *Electronics*, vol. 12, no. 3, Art. no. 520, 2023 |
 
 ---
 
@@ -326,5 +352,5 @@ Nhằm bảo đảm thiết kế đúng đắn toán học trên mọi không gi
 [14] M. D. Gould, M. A. Porter, S. Williams, M. McDonald, D. J. Fenn, and S. D. Howison, "Limit order books," Quantitative Finance, vol. 13, no. 11, pp. 1709–1742, Nov. 2013, doi: 10.1080/14697688.2013.803148.
 [15] C. He, H. Fu, W. Luk, W. Li, and G. Yang, "Exploring the potential of reconfigurable platforms for order book update," in Proc. 2017 27th Int. Conf. Field Programmable Logic and Applications (FPL), Ghent, Belgium, Sept. 2017, pp. 1–8, doi: 10.23919/FPL.2017.8056847.
 [16] M. Thompson, D. Farley, M. Barker, P. Gee, and A. Stewart, "Disruptor: High performance alternative to bounded queues for exchanging data between concurrent threads," LMAX Exchange, London, UK, Tech. White Paper, 2011.
-[17] P. Puranik, M. S. Berger, and Y. Yan, "Hardware-Accelerated Financial Matching Engine on FPGA," Electronics, vol. 12, no. 14, p. 3020, Jul. 2023, doi: 10.3390/electronics12143020.
+[17] S. Puranik, M. Barve, S. Rodi, and R. Patrikar, "Acceleration of Trading System Back End with FPGAs Using High-Level Synthesis Flow," Electronics, vol. 12, no. 3, Art. no. 520, Jan. 2023, doi: 10.3390/electronics12030520.
 ```
